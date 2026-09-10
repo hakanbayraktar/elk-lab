@@ -2,11 +2,9 @@
 set -euo pipefail
 
 KIBANA_URL="${KIBANA_URL:-http://localhost:5601}"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-NDJSON_FILE="${SCRIPT_DIR}/../kibana-dashboard-export.ndjson"
 
 echo "[+] Checking Kibana status at ${KIBANA_URL}..."
-until curl -s "${KIBANA_URL}/api/status" | grep -q '"overall":{"level":"available"'; do
+until curl -s "${KIBANA_URL}/api/status" | grep -q '"level":"available"'; do
   echo "    Waiting for Kibana to be ready..."
   sleep 3
 done
@@ -24,12 +22,19 @@ for view in \
     -d "${view}" > /dev/null 2>&1 || true
 done
 
-echo "[+] Importing Saved Objects..."
-if [ -f "${NDJSON_FILE}" ]; then
-  curl -s -X POST "${KIBANA_URL}/api/saved_objects/_import?overwrite=true" \
-    -H 'kbn-xsrf: true' \
-    --form file=@"${NDJSON_FILE}" > /dev/null 2>&1 || true
-  echo "[✓] Data views and dashboard imported successfully."
-fi
+echo "[+] Creating DevOps Observability & Security Dashboard..."
+curl -s -X POST "${KIBANA_URL}/api/saved_objects/dashboard/devops-ops-overview?overwrite=true" \
+  -H 'kbn-xsrf: true' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "attributes": {
+      "title": "DevOps Observability & Security Overview",
+      "description": "Unified dashboard for system, application, and security metrics",
+      "panelsJSON": "[]",
+      "optionsJSON": "{\"useMargins\":true,\"syncColors\":true,\"hidePanelTitles\":false}",
+      "timeRestore": false
+    }
+  }' > /dev/null 2>&1 || true
 
+echo "[✓] Data views and dashboard created successfully."
 echo "[✓] You can now access Kibana at: ${KIBANA_URL}/app/dashboards"
