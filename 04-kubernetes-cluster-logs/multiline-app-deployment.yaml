@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service-demo
+  namespace: default
+  labels:
+    app: payment-service
+    tier: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+        tier: backend
+    spec:
+      containers:
+        - name: payment-worker
+          image: python:3.11-alpine
+          command:
+            - /bin/sh
+            - -c
+            - |
+              python3 -u -c '
+              import time, sys, random
+              from datetime import datetime
+
+              count = 0
+              while True:
+                  now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+                  count += 1
+                  if count % 4 == 0:
+                      # Multiline Exception Stack Trace
+                      try:
+                          x = 1 / 0
+                      except Exception:
+                          print(f"[{now}] ERROR [payment-processor] Transaction processing failed for order-{random.randint(1000,9999)}", file=sys.stderr)
+                          import traceback
+                          traceback.print_exc()
+                          sys.stderr.flush()
+                  else:
+                      print(f"[{now}] INFO [payment-processor] Order #{random.randint(1000,9999)} successfully processed (amount={random.randint(10,500)}.00 USD)")
+                      sys.stdout.flush()
+                  time.sleep(3)
+              '
+          resources:
+            limits:
+              cpu: 100m
+              memory: 64Mi
+            requests:
+              cpu: 50m
+              memory: 32Mi

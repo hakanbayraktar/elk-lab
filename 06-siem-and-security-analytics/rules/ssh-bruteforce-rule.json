@@ -1,0 +1,20 @@
+{
+  "name": "SIEM: SSH Brute Force Attempt Detected",
+  "type": "threshold",
+  "params": {
+    "index": ["system-logs-*", "filebeat-*"],
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": 5,
+    "thresholdComparator": ">=",
+    "criteria": [
+      {
+        "comparator": "all",
+        "query": "message: \"Failed password\" or message: \"authentication failure\""
+      }
+    ],
+    "groupBy": "client_ip"
+  },
+  "actions": [],
+  "tags": ["siem", "ssh", "brute-force", "mitre-t1110"]
+}

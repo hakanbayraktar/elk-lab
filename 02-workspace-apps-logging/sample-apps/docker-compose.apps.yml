@@ -1,0 +1,50 @@
+services:
+  nginx-web:
+    image: nginx:alpine
+    container_name: demo-nginx
+    ports:
+      - "8081:80"
+    volumes:
+      - ./logs/nginx:/var/log/nginx
+    networks:
+      - app-net
+
+  demo-api:
+    image: node:20-alpine
+    container_name: demo-api
+    working_dir: /app
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./logs/apps:/app/logs
+    command: >
+      sh -c 'npm init -y && npm install express && node -e "
+      const express = require(\"express\");
+      const fs = require(\"fs\");
+      const app = express();
+      function writeLog(level, msg, status) {
+        const log = JSON.stringify({
+          timestamp: new Date().toISOString(),
+          level,
+          message: msg,
+          http_status: status,
+          service: \"payment-api\"
+        }) + \"\\n\";
+        fs.appendFileSync(\"logs/api.log\", log);
+      }
+      app.get(\"/api/pay\", (req, res) => {
+        writeLog(\"INFO\", \"Odeme basariyla tamamlandi\", 200);
+        res.json({status: \"success\"});
+      });
+      app.get(\"/api/fail\", (req, res) => {
+        writeLog(\"ERROR\", \"Veritabani baglanti hatasi\", 500);
+        res.status(500).json({error: \"db_error\"});
+      });
+      app.listen(3000, () => console.log(\"API running on 3000\"));
+      "'
+    networks:
+      - app-net
+
+networks:
+  app-net:
+    driver: bridge

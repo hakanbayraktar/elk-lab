@@ -1,0 +1,16 @@
+{
+  "name": "SIEM: Suspicious Web Path Traversal & Injection Pattern",
+  "type": "query",
+  "params": {
+    "index": ["app-logs-*"],
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "criteria": [
+      {
+        "query": "url: *../* or url: */etc/passwd* or url: *union*select* or response_code: 403"
+      }
+    ]
+  },
+  "actions": [],
+  "tags": ["siem", "web-attack", "path-traversal", "owasp-top10"]
+}
