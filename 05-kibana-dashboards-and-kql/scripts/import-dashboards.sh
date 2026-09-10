@@ -10,7 +10,10 @@ until curl -s "${KIBANA_URL}/api/status" | grep -q '"level":"available"'; do
 done
 echo "[✓] Kibana is available."
 
-echo "[+] 1. Creating / updating Data Views..."
+echo "[+] 1. Installing Official Sample Logs & Dashboards..."
+curl -s -X POST "${KIBANA_URL}/api/sample_data/logs" -H 'kbn-xsrf: true' > /dev/null 2>&1 || true
+
+echo "[+] 2. Creating / updating Data Views for ELK Labs..."
 for view in \
   '{"data_view":{"id":"app-logs-view","title":"app-logs-*","name":"Application Logs (Nginx & API)","timeFieldName":"@timestamp"}}' \
   '{"data_view":{"id":"filebeat-view","title":"filebeat-*","name":"Filebeat Infrastructure (Docker & K8s)","timeFieldName":"@timestamp"}}' \
@@ -22,8 +25,8 @@ for view in \
     -d "${view}" > /dev/null 2>&1 || true
 done
 
-echo "[+] 2. Creating Native Lens Visualizations..."
-# 2.1 HTTP Status Codes
+echo "[+] 3. Creating Native Lens Visualizations for Application Logs..."
+# 3.1 HTTP Status Codes Over Time
 curl -s -X POST "${KIBANA_URL}/api/saved_objects/lens/http-status-codes-lens?overwrite=true" \
   -H 'kbn-xsrf: true' \
   -H 'Content-Type: application/json' \
@@ -58,7 +61,7 @@ curl -s -X POST "${KIBANA_URL}/api/saved_objects/lens/http-status-codes-lens?ove
     ]
   }' > /dev/null 2>&1 || true
 
-# 2.2 Top Requested URLs
+# 3.2 Top Requested URLs
 curl -s -X POST "${KIBANA_URL}/api/saved_objects/lens/top-urls-lens?overwrite=true" \
   -H 'kbn-xsrf: true' \
   -H 'Content-Type: application/json' \
@@ -92,7 +95,7 @@ curl -s -X POST "${KIBANA_URL}/api/saved_objects/lens/top-urls-lens?overwrite=tr
     ]
   }' > /dev/null 2>&1 || true
 
-# 2.3 Top Attacker IPs
+# 3.3 Top Attacker IPs
 curl -s -X POST "${KIBANA_URL}/api/saved_objects/lens/top-attackers-lens?overwrite=true" \
   -H 'kbn-xsrf: true' \
   -H 'Content-Type: application/json' \
@@ -126,7 +129,7 @@ curl -s -X POST "${KIBANA_URL}/api/saved_objects/lens/top-attackers-lens?overwri
     ]
   }' > /dev/null 2>&1 || true
 
-echo "[+] 3. Creating Unified Observability & Security Dashboard..."
+echo "[+] 4. Creating Unified DevOps Observability & Security Dashboard..."
 curl -s -X POST "${KIBANA_URL}/api/saved_objects/dashboard/devops-ops-overview?overwrite=true" \
   -H 'kbn-xsrf: true' \
   -H 'Content-Type: application/json' \
@@ -136,7 +139,10 @@ curl -s -X POST "${KIBANA_URL}/api/saved_objects/dashboard/devops-ops-overview?o
       "description": "Live production dashboard for Nginx, Node.js API, and Security events",
       "panelsJSON": "[{\"version\":\"8.17.0\",\"type\":\"lens\",\"gridData\":{\"x\":0,\"y\":0,\"w\":48,\"h\":14,\"i\":\"1\"},\"panelIndex\":\"1\",\"panelRefName\":\"panel_0\"},{\"version\":\"8.17.0\",\"type\":\"lens\",\"gridData\":{\"x\":0,\"y\":14,\"w\":24,\"h\":14,\"i\":\"2\"},\"panelIndex\":\"2\",\"panelRefName\":\"panel_1\"},{\"version\":\"8.17.0\",\"type\":\"lens\",\"gridData\":{\"x\":24,\"y\":14,\"w\":24,\"h\":14,\"i\":\"3\"},\"panelIndex\":\"3\",\"panelRefName\":\"panel_2\"}]",
       "optionsJSON": "{\"useMargins\":true,\"syncColors\":true,\"hidePanelTitles\":false}",
-      "timeRestore": false
+      "timeRestore": false,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"query\":{\"language\":\"kuery\",\"query\":\"\"},\"filter\":[]}"
+      }
     },
     "references": [
       {"name": "panel_0", "type": "lens", "id": "http-status-codes-lens"},
@@ -145,8 +151,9 @@ curl -s -X POST "${KIBANA_URL}/api/saved_objects/dashboard/devops-ops-overview?o
     ]
   }' > /dev/null 2>&1 || true
 
-echo "[✓] Data views, Lens charts, and Dashboard setup completed successfully."
+echo "[✓] Setup completed successfully."
 echo "=================================================================="
-echo "  Kibana Dashboard: ${KIBANA_URL}/app/dashboards#/view/devops-ops-overview"
-echo "  Kibana Discover:  ${KIBANA_URL}/app/discover"
+echo "  Live Custom Dashboard:   ${KIBANA_URL}/app/dashboards#/view/devops-ops-overview"
+echo "  Official Web Dashboard:  ${KIBANA_URL}/app/dashboards#/view/edf84fe0-e1a0-11e7-b6d5-4dc382ef7f5b"
+echo "  Kibana Discover Stream:  ${KIBANA_URL}/app/discover"
 echo "=================================================================="
