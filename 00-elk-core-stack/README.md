@@ -182,7 +182,9 @@ Kümenin anlık durumunu incelemek için REST API uç noktaları kullanılır:
 
 ### 3. ELK Güvenliği: Kullanıcı Adı, Şifre ve Yetkilendirme (Security)
 
-Prodüksiyon ortamında Elasticsearch ve Kibana'ya kullanıcı adı ve parola tanımlamak için:
+Prodüksiyon ortamında Elasticsearch ve Kibana'ya kullanıcı adı ve parola tanımlamak için iki ana yaklaşım uygulanır:
+
+#### Yöntem 1: Dahili Elastic X-Pack Güvenliği (Native Security)
 
 1. **`docker-compose.yml` Dosyasında Güvenliği Aktif Etme:**
    ```yaml
@@ -221,6 +223,85 @@ Prodüksiyon ortamında Elasticsearch ve Kibana'ya kullanıcı adı ve parola ta
 4. **Kibana UI Üzerinden Yeni Kullanıcı ve Rol Tanımlama:**
    * Tarayıcıdan `http://localhost:5601` > **Stack Management > Security > Users** bölümüne gidin.
    * **Create user** butonuna tıklayarak stajyer/öğrenci kullanıcısı (`devops_read_only`) oluşturun ve sadece `kibana_user` ile `read` yetkisi verin.
+
+---
+
+#### Yöntem 2: DevOps Standardı — Nginx Reverse Proxy ile HTTP Basic Auth (Dış Erişim Koruması)
+
+Gerçek dünya DevOps altyapılarında Kibana ve Elasticsearch API'si sıklıkla bir **Ters Proxy (Nginx / Traefik / Ingress)** arkasında korunur.
+
+* **Neden Bu Yöntem Tercih Edilir?**
+  * **Sıfır Kesinti:** Dahili çalışan Logstash, Filebeat veya Fluent-Bit ajanlarının konfigürasyonunu bozmadan ve konteynerleri yeniden başlatmadan anında şifre koruması sağlar.
+  * **Hafif ve Güvenli:** Dahili Docker ağında (`novashop-network`) servisler yerel IP/port üzerinden kimlik doğrulama yükü olmadan ultra hızlı log basarken; internetten Kibana veya Elasticsearch'e erişmeye çalışan tarayıcılar Nginx katmanında HTTP Basic Auth ile karşılanır.
+
+**Adım Adım Kurulum:**
+
+1. **Parola Dosyası Oluşturma:**
+   ```bash
+   sudo apt-get update && sudo apt-get install -y apache2-utils
+   sudo htpasswd -cb /etc/nginx/.htpasswd-observability admin BilgincIT454
+   sudo chmod 640 /etc/nginx/.htpasswd-observability
+   sudo chown root:www-data /etc/nginx/.htpasswd-observability
+   ```
+
+2. **Nginx Sanal Sunucu Bloklarına Korumayı Ekleme:**
+   `/etc/nginx/sites-available/student-tools.conf` içinde Kibana ve Elastic blokları:
+   ```nginx
+   # KIBANA (Port 5601)
+   server {
+       listen 443 ssl http2;
+       server_name student101-kibana.devopsatolyesi.com;
+       ssl_certificate /etc/letsencrypt/live/devopsatolyesi.com/fullchain.pem;
+       ssl_certificate_key /etc/letsencrypt/live/devopsatolyesi.com/privkey.pem;
+
+       location / {
+           auth_basic "DevOps Atolyesi - Guvenli Erisim";
+           auth_basic_user_file /etc/nginx/.htpasswd-observability;
+
+           proxy_pass http://127.0.0.1:5601;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
+   }
+
+   # ELASTICSEARCH API (Port 9200)
+   server {
+       listen 443 ssl http2;
+       server_name student101-elastic.devopsatolyesi.com;
+       ssl_certificate /etc/letsencrypt/live/devopsatolyesi.com/fullchain.pem;
+       ssl_certificate_key /etc/letsencrypt/live/devopsatolyesi.com/privkey.pem;
+
+       location / {
+           auth_basic "DevOps Atolyesi - Guvenli Erisim";
+           auth_basic_user_file /etc/nginx/.htpasswd-observability;
+
+           proxy_pass http://127.0.0.1:9200;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
+   }
+   ```
+
+3. **Nginx'i Test Edip Yeniden Yükleme:**
+   ```bash
+   sudo nginx -t
+   sudo systemctl reload nginx
+   ```
+
+4. **Doğrulama (CURL ile Test):**
+   ```bash
+   # Şifresiz -> 401 Unauthorized
+   curl -s -o /dev/null -w "%{http_code}\n" -k https://student101-kibana.devopsatolyesi.com
+   # Beklenen Çıktı: 401
+
+   # Şifreli -> 200 OK
+   curl -s -o /dev/null -w "%{http_code}\n" -k -u admin:BilgincIT454 https://student101-kibana.devopsatolyesi.com/api/status
+   # Beklenen Çıktı: 200
+   ```
 
 ---
 
