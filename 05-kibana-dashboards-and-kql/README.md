@@ -50,56 +50,144 @@ Kibana'nın Elasticsearch indekslerini okuyabilmesi için Data View tanımlanmal
 
 *(Not: Bu işlemi otomatikleştirmek için `scripts/import-dashboards.sh` betiğini çalıştırabilirsiniz).*
 
-### Adım 2: Kibana Discover ile Log İnceleme
+### Adım 2: Kibana Discover ile Log İnceleme ve Güvenlik Avcılığı (Threat Hunting)
 
-1. Sol menüden **Analytics > Discover** bölümüne geçin.
-2. Sol üst açılır menüden `Application Logs` veri görünümünü seçin.
-3. Zaman filtresini sağ üstten **Last 1 hour** yapın.
-4. KQL arama çubuğuna şu sorguyu girip Enter'a basın:
+Logların canlı analizi, hata ayıklama ve siber güvenlik araştırmaları **Kibana Discover** ekranında yürütülür:
+👉 **Kibana Discover Arayüzü:** [http://localhost:5601/app/discover](http://localhost:5601/app/discover)
+
+Öğrencilere sınıfta gösterilebilecek 4 pratik inceleme senaryosu:
+
+#### 1. Senaryo: SSH Kaba Kuvvet (Brute-Force) Saldırı Analizi
+1. Sol üstteki Veri Görünümünden **`Linux System Logs (Auth & Syslog)`** seçin.
+2. Sağ üstten zaman aralığını **`Last 24 hours`** yapın.
+3. KQL arama çubuğuna şu sorguyu girin:
    ```kql
-   response_code >= 400
+   message : "Failed password"
    ```
-5. Sol paneldeki **Available fields** listesinden `client_ip`, `method`, `url`, `response_code` alanlarının üzerine gelip `+` (Add field as column) simgesine tıklayın. Tablonun okunabilir bir HTTP erişim günlüğüne dönüştüğünü görün.
+4. **Gözlem:** Saldırganın (`198.51.100.77`) sırayla `root`, `admin`, `ubuntu`, `deploy`, `oracle` hesaplarını ele geçirmek için yaptığı başarısız denemeleri anlık olarak listeleyin.
 
-### Adım 3: Kibana Lens ile Görselleştirme Üretme
+#### 2. Senaryo: Web Dizin Atlama (Path Traversal) ve SQL Injection Tespiti
+1. Veri Görünümünü **`Application Logs (Nginx & API)`** olarak değiştirin.
+2. KQL arama çubuğuna şu sorguyu girin:
+   ```kql
+   url : *../* or url : */etc/passwd* or url : *UNION*
+   ```
+3. Sol menüden `client_ip`, `method`, `url`, `response_code` alanlarını sütun olarak ekleyin (`+` simgesi).
+4. **Gözlem:** Saldırganın sistem dosyalarını okumaya veya SQL injection yapmaya çalıştığını ve web sunucusunun `404` yanıtı vererek isteği engellediğini görün.
+
+#### 3. Senaryo: Kubernetes Kümesinde OOMKilled ve CrashLoopBackOff Olayları
+1. Veri Görünümünü **`Kubernetes Pod & Cluster Logs`** yapın.
+2. KQL sorgusu:
+   ```kql
+   event.reason : "OOMKilled" or event.reason : "CrashLoopBackOff"
+   ```
+3. **Gözlem:** Aşırı bellek tüketen konteynerlerin cgroup sınırını aştığı için Linux çekirdeği tarafından sonlandırıldığını teşhis edin.
+
+#### 4. Senaryo: CI/CD Pipeline Hata Analizi
+1. Veri Görünümünü **`CI/CD Pipelines (Jenkins & GitLab)`** yapın.
+2. KQL sorgusu:
+   ```kql
+   ci.status : "FAILED"
+   ```
+3. **Gözlem:** Hangi pipeline aşamasında (`trivy-container-scan`, `unit-test`) derlemenin başarısız olduğunu ve sürelerini inceleyin.
+
+---
+
+### Adım 3: Manuel Olarak Sample Data (Örnek Veri Seti) Ekleme ve Kaldırma
+
+Kibana, öğrencilerin öğrenmesini hızlandırmak için 3 hazır endüstriyel veri seti sunar:
+
+* **Kibana Arayüzünden (UI):**
+  1. Sol üstteki Elastic logosuna tıklayarak ana sayfaya gidin (`http://localhost:5601`).
+  2. Sayfanın en altındaki **Try sample data** bağlantısına tıklayın.
+  3. Açılan sayfada 3 kart göreceksiniz:
+     - **Sample eCommerce orders:** E-ticaret satış, sepet ve ürün analizleri.
+     - **Sample flight data:** Küresel uçuş gecikmeleri, rotalar ve hava durumu.
+     - **Sample web logs:** Apache/Nginx web erişim logları, GeoIP ve işletim sistemi dökümleri.
+  4. İstediğiniz kartın altındaki **Add data** butonuna basın. Kibana otomatik olarak hem indeksi oluşturur hem de hazır panoları yükler.
+  5. Kaldırmak istediğinizde aynı butonda çıkan **Remove** seçeneğine tıklamanız yeterlidir.
+
+* **API Üzerinden (Terminalden):**
+  ```bash
+  # Web logları ekleme:
+  curl -s -X POST "http://localhost:5601/api/sample_data/logs" -H 'kbn-xsrf: true'
+
+  # E-ticaret verilerini ekleme:
+  curl -s -X POST "http://localhost:5601/api/sample_data/ecommerce" -H 'kbn-xsrf: true'
+
+  # Uçuş verilerini ekleme:
+  curl -s -X POST "http://localhost:5601/api/sample_data/flights" -H 'kbn-xsrf: true'
+  ```
+
+---
+
+### Adım 4: Manuel Olarak Sıfırdan Dashboard ve Görselleştirme Tasarımı
 
 1. Sol menüden **Analytics > Dashboard** bölümüne gidin ve **Create dashboard** butonuna tıklayın.
 2. **Create visualization** butonuna tıklayarak **Lens** editörünü açın.
 3. **Grafik 1: Zaman Serisi Çubuk Grafik (HTTP Durum Kodları)**
-   - Sağdaki menüden veri görünümü olarak `Application Logs` seçin.
-   - Sol taraftaki alan listesinden `@timestamp` alanını yatay eksene (Horizontal axis) sürükleyin.
-   - Sol taraftan `Records` alanını düşey eksene (Primary metric) sürükleyin.
+   - Sağ üstteki veri görünümü seçicisinden `Application Logs (Nginx & API)` seçin.
+   - Sol taraftaki alan listesinden `@timestamp` alanını yatay eksene (**Horizontal axis**) sürükleyin.
+   - Sol taraftan `Records` alanını düşey eksene (**Primary metric**) sürükleyin.
    - `response_code` alanını sürükleyip **Break down by** alanına bırakın.
    - Sağ üstten **Save and return** butonuna basarak panoya ekleyin.
 4. **Grafik 2: Pasta / Halka Grafik (HTTP Metot Dağılımı)**
-   - Tekrar **Create visualization** deyin.
-   - Grafik türünü (sağ üst) **Donut** yapın.
+   - Panonun üstündeki **Create visualization** butonuna tekrar tıklayın.
+   - Grafik türünü (sağ üst) **Donut** (Halka) yapın.
    - `method` alanını sürükleyip **Slice by** alanına bırakın.
    - **Save and return** ile panoya ekleyin.
-5. Panonun sağ üstündeki **Save** butonuna basarak adını `DevOps Observability Overview` olarak kaydedin.
+5. **Panel 3: Canlı Log Tablosu Ekleme (Saved Search)**
+   - Panonun üstündeki **Add from library** butonuna tıklayın.
+   - Arama kutusuna `Live Application Log Stream` yazıp seçin. Panonun altına anlık olarak canlı logların aktığı renkli bir veri tablosu eklenecektir.
+6. Panonun sağ üstündeki **Save** butonuna basarak başlığı `DevOps Operasyonel Pano` olarak kaydedin.
 
-### Adım 4: Otomatik Dışa / İçe Aktarma (Import / Export)
+---
 
-Hazırlanan panoyu JSON (NDJSON) olarak dışa aktarmak veya hazır panoyu içeri almak için:
+### Adım 5: Canlı Çalışan 8 Panoyu Açma (Doğrudan Bağlantılar)
+
+Sistemde hazır ve canlı verilerle beslenmiş 8 adet pano bulunmaktadır:
+
+| No | Pano Adı | Doğrudan Erişim Bağlantısı | Kapsam ve Açıklama |
+|:---:|:---|:---|:---|
+| 1 | **DevOps Unified Dashboard** | [Aç](http://localhost:5601/app/dashboards#/view/devops-ops-overview) | HTTP yanıt kodları, en çok istek alan URL'ler, saldırgan IP'ler ve canlı log akışı |
+| 2 | **Microservices & API Observability** | [Aç](http://localhost:5601/app/dashboards#/view/devops-microservices-observability) | Servis bazında gecikme (latency), hata dağılımı ve mikroservis erişim tablosu |
+| 3 | **Kubernetes Cluster & Pods** | [Aç](http://localhost:5601/app/dashboards#/view/k8s-cluster-pod-health) | OOMKilled, CrashLoopBackOff olayları, namespace log hacmi ve canlı Pod log dökümü |
+| 4 | **CI/CD Pipeline Performance** | [Aç](http://localhost:5601/app/dashboards#/view/cicd-pipeline-performance) | Jenkins & GitLab build başarı/başarısızlık trendleri, aşama süreleri ve hata analizi |
+| 5 | **Security & Threat Hunting** | [Aç](http://localhost:5601/app/dashboards#/view/security-siem-threat-center) | MITRE ATT&CK T1110 SSH kaba kuvvet analizi, firewall drop kayıtları ve SIEM günlüğü |
+| 6 | **Official Web Logs Traffic** | [Aç](http://localhost:5601/app/dashboards#/view/edf84fe0-e1a0-11e7-b6d5-4dc382ef7f5b) | Resmi web erişim trafiği, coğrafi dünya haritası ve bant genişliği dağılımı |
+| 7 | **Official E-Commerce Orders** | [Aç](http://localhost:5601/app/dashboards#/view/722b74f0-b882-11e8-a6d9-e546fe2bba5f) | Resmi e-ticaret sipariş hacimleri, satış gelirleri ve müşteri segmentasyonu |
+| 8 | **Official Global Flights** | [Aç](http://localhost:5601/app/dashboards#/view/7adfa750-4c81-11e8-b3d7-01146121b73d) | Küresel uçuş gecikmeleri, havayolu analizleri ve hava durumu korelasyonu |
+
+---
+
+### Adım 6: Otomasyon Scriptleri ile Tüm Altyapıyı Kurma
+
+İleride tüm veri setlerini ve 8 panoyu tek komutla baştan kurmak için:
 
 ```bash
-# Hazır panoyu ve Data View'ları tek komutla Kibana'ya aktarın
-cd 05-kibana-dashboards-and-kql
-./scripts/import-dashboards.sh
+# 1. 40.000+ yüksek hacimli DevOps, K8s, CI/CD ve Güvenlik logunu üretir
+python3 scripts/generate_rich_devops_datasets.py
+
+# 2. Tüm Data View'ları, Lens grafiklerini ve 8 panoyu Kibana'ya aktarır
+./05-kibana-dashboards-and-kql/scripts/import-dashboards.sh
 ```
+
+---
 
 ## Doğal Doğrulama ve Beklenen Sonuç
 
-1. Terminalden Kibana Saved Objects API'sini sorgulayın:
+1. Terminalden kayıtlı pano sayısını doğrulayın:
    ```bash
-   curl -s http://localhost:5601/api/saved_objects/_find?type=dashboard | jq '.saved_objects[].attributes.title'
+   curl -s -X GET "http://localhost:5601/api/saved_objects/_find?type=dashboard&per_page=20" -H "kbn-xsrf: true" | jq '.saved_objects[].attributes.title'
    ```
-   Çıktıda `"DevOps Observability Overview"` başlığının yer aldığını doğrulayın.
+   *Çıktıda 8 panonun tamamının listelendiğini teyit edin.*
 
-2. Tarayıcıda `http://localhost:5601/app/dashboards` sayfasına gidin.
-3. Panonun üzerinde filtreleme yaparak (örneğin grafikten `500` dilimine tıklayarak) tüm panonun anlık olarak dinamik şekilde filtrelendiğini gözlemleyin.
+2. Tarayıcıdan `http://localhost:5601/app/dashboards` sayfasına gidin ve panoların sıfır hata ile açıldığını doğrulayın.
+
+---
 
 ## Temizlik
 
 Oluşturulan Data View veya Saved Object'leri temizlemek isterseniz:
 1. **Stack Management > Saved Objects** menüsünden ilgili dashboard veya data view'ları seçip **Delete** diyebilirsiniz.
+

@@ -59,30 +59,89 @@ Bu laboratuvar serisinde **Aşamalı Tekil Yığın (Single-Stack Architecture)*
 
 ## 🚀 Hızlı Başlangıç
 
-### 1. Sistem Çekirdek Parametresinin Ayarlanması (Önemli)
+### Seçenek A: Tek Komutla Uçtan Uca Otomatik Kurulum (Turnkey Setup)
 
-Elasticsearch mmap sistem çağrısı sınırının Linux çekirdeğinde en az 262144 olmasını şart koşar:
-
-```bash
-sudo sysctl -w vm.max_map_count=262144
-```
-
-### 2. Merkezi ELK Omurgasının Başlatılması
+Tüm ELK omurgasını, canlı mikroservisleri, 40.000+ örnek log verisini, 8 farklı Dashboard'u ve Data View'ları tek komutla kurmak için kök dizinden çalıştırın:
 
 ```bash
-cd 00-elk-core-stack
-docker compose up -d
+./setup-all.sh
 ```
 
-Servislerin sağlık durumunu kontrol edin:
+Kurulum tamamlandığında Kibana arayüzüne tarayıcınızdan erişebilirsiniz:
+👉 **Kibana Dashboard Merkezi:** [http://localhost:5601/app/dashboards](http://localhost:5601/app/dashboards)
 
+Laboratuvarı tamamen kapatıp sıfırlamak için:
 ```bash
-docker compose ps
-curl -s http://localhost:9200/_cluster/health?pretty
+./teardown-all.sh
 ```
 
-Durum `"green"` veya `"yellow"` olduğunda Kibana arayüzüne tarayıcınızdan erişebilirsiniz:
-👉 **`http://localhost:5601`**
+---
+
+### Seçenek B: Adım Adım ve Anlayarak Kurulum (Eğitmen ve Sınıf Akışı)
+
+Öğrencilerin mimariyi kavrayarak, her bir bileşenin görevini anlayarak ilerlemesi için adım adım kurulum akışı:
+
+#### 1. Linux Çekirdek Bellek Parametresi (`vm.max_map_count`)
+* **Neden Gerekli?** Elasticsearch, Lucene indeks dosyalarını yüksek hızda okuyup yazabilmek için doğrudan sanal bellek adreslerine haritalar (mmapfs). Linux'un varsayılan sınırı (`65530`) yetersiz kalarak `OutOfMemory` hatalarına neden olur.
+* **Komut:**
+  ```bash
+  sudo sysctl -w vm.max_map_count=262144
+  ```
+
+#### 2. Çekirdek Elastic Stack Omurgasını Başlatma
+* **Neden Gerekli?** Logların toplanması ve görselleştirilmesi için önce omurganın hazır olması gerekir: Elasticsearch (`:9200`), Logstash (`:5000/:5044`) ve Kibana (`:5601`).
+* **Komut:**
+  ```bash
+  docker compose -f 00-elk-core-stack/docker-compose.yml up -d
+  ```
+
+#### 3. Küme ve Servis Sağlık Durumunu Doğrulama
+* **Neden Gerekli?** Log boru hatlarını çalıştırmadan önce Elasticsearch'ün REST API üzerinden hazır (`green` veya `yellow`) olduğu doğrulanır.
+* **Komut:**
+  ```bash
+  # Konteyner durumları
+  docker compose -f 00-elk-core-stack/docker-compose.yml ps
+
+  # Elasticsearch küme sağlığı
+  curl -s http://localhost:9200/_cluster/health?pretty
+  ```
+
+#### 4. Canlı Örnek Mikroservisleri Başlatma
+* **Neden Gerekli?** Gerçek bir DevOps ortamındaki gibi Nginx Web Sunucusu (`:8081`) ve Node.js Ödeme/Auth API'si (`:3001`) ayağa kaldırılarak gerçek HTTP istek ve hata logları üretilir.
+* **Komut:**
+  ```bash
+  docker compose -f 02-workspace-apps-logging/sample-apps/docker-compose.apps.yml up -d
+  ```
+
+#### 5. Canlı Uygulama Trafiği ve Güvenlik Tehditleri Simülasyonu
+* **Neden Gerekli?** Elasticsearch indekslerine canlı veriler düşmesi için hem meşru uygulama trafiği hem de kaba kuvvet (brute force) saldırıları simüle edilir.
+* **Komut:**
+  ```bash
+  # 1. Nginx ve Node API'ye HTTP istekleri gönderir (200, 404, 500 kodları üretir)
+  ./02-workspace-apps-logging/sample-apps/generate-and-ship-traffic.sh 30
+
+  # 2. SSH Brute Force (T1110) ve Web Dizin Atlama (Path Traversal) saldırılarını enjekte eder
+  ./06-siem-and-security-analytics/scripts/simulate-attacks.sh 10
+  ```
+
+#### 6. Yüksek Hacimli DevOps ve Küme Veri Setlerini İndeksleme
+* **Neden Gerekli?** Kubernetes pod yaşam döngüsü (OOMKilled, CrashLoopBackOff), CI/CD build performansları ve mikroservis gecikmelerini içeren 40.000+ dokümanlık gerçekçi üretim verisi sisteme kazandırılır.
+* **Komut:**
+  ```bash
+  python3 scripts/generate_rich_devops_datasets.py
+  ```
+
+#### 7. Kibana Veri Görünümleri (Data Views) ve 8 Dashboard'u Kaydetme
+* **Neden Gerekli?** Kibana'nın oluşturulan indeksleri (`app-logs-*`, `system-logs-*`, `k8s-logs-*`, `cicd-logs-*`) okuyabilmesi ve öğrencilerin hazır 8 adet uzmanlık panosuna doğrudan erişebilmesi sağlanır.
+* **Komut:**
+  ```bash
+  ./05-kibana-dashboards-and-kql/scripts/import-dashboards.sh
+  ```
+
+#### 8. Canlı Doğrulama ve Arayüzü Açma
+* **Tarayıcıda Açın:**
+  * 👉 **Dashboard Merkezi:** [http://localhost:5601/app/dashboards](http://localhost:5601/app/dashboards)
+  * 👉 **Discover (Canlı Log Akışı):** [http://localhost:5601/app/discover](http://localhost:5601/app/discover)
 
 ---
 
