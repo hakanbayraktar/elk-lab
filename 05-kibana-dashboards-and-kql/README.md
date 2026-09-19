@@ -1,10 +1,10 @@
 # LAB-ELK-05 — Kibana Arayüzü, KQL Sorguları ve Görselleştirme Panoları
 
-| Seviye | Tahmini Süre | Profil / Araçlar | Açık Portlar |
-| :--- | :--- | :--- | :--- |
-| Başlangıç / Orta | 30 Dakika | Kibana 8.x, Lens, KQL (Kibana Query Language) | 5601 (Kibana) |
+| Seviye | Profil / Araçlar | Açık Portlar |
+| :--- | :--- | :--- |
+| Başlangıç / Orta | Kibana 8.x, Lens, KQL (Kibana Query Language) | 15601 / 5601 (Kibana) |
 
-[LAB-ELK-05.zip](LAB-ELK-05.zip)
+---
 
 ## Amaç
 
@@ -13,9 +13,9 @@
 - Kibana Lens aracı ile zaman serisi, pasta/halka (donut) ve sayısal metrik görselleştirmeleri üretmek.
 - Üretilen grafikleri tek bir operasyonel panoda (Dashboard) birleştirmek ve dışa/içe aktarmak (`Saved Objects`).
 
-## Ön Koşullar
+## Ön Koşullar ve Bağımlılıklar
 
-- `00-elk-core-stack` servislerinin ayakta olması (`http://localhost:5601`).
+- **Zorunlu Bağımlılık:** `00-elk-core-stack` servislerinin ayakta olması (`https://studentXX-kibana.devopsatolyesi.com` veya `http://<UBUNTU_IP>:15601` / `http://localhost:5601`).
 - Önceki lablarda toplanan logların Elasticsearch'te bulunması (`app-logs-*`, `filebeat-*`, `system-logs-*`).
 
 ## KQL (Kibana Query Language) Referans Rehberi

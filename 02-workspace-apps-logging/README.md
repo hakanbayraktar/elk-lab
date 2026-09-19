@@ -1,8 +1,15 @@
 # LAB-ELK-02 — Uygulama Loglarının Yapısal Parse Edilmesi (Grok & JSON)
 
-| Seviye | Tahmini Süre | Profil / Araçlar | Açık Portlar |
-|:---:|:---:|:---:|:---:|
-| Orta | 35 Dakika | `docker compose`, `logstash`, `grok`, `json` | 8081 (Nginx), 3001 (Node.js API) |
+| Seviye | Profil / Araçlar | Açık Portlar |
+|:---:|:---:|:---:|
+| Orta | `docker compose`, `logstash`, `grok`, `json` | 8081 (Nginx), 3001 (Node.js API), 15601 / 5601 (Kibana) |
+
+---
+
+## Ön Koşullar ve Bağımlılıklar
+
+* **Zorunlu Bağımlılık:** `00-elk-core-stack` omurgasının (`elasticsearch`, `logstash`, `kibana`) çalışıyor olması gerekmektedir.
+* **Sonraki Lablarla İlişki:** Burada ayağa kaldırılan Nginx (`:8081`) web servisi, **`LAB-ELK-06` (SIEM & Tehdit Avcılığı)** laboratuvarında web saldırı simülasyonunun (Path Traversal, SQLi) canlı hedefi olacaktır. Bu nedenle modül 06 tamamlanana kadar açık bırakılması önerilir.
 
 ---
 
@@ -77,6 +84,8 @@ curl -s "http://localhost:9200/apps-api_json-*/_search?pretty" | jq '.hits.hits[
 ---
 
 ## Temizlik
+
+> **Bağımlılık Uyarısı:** Eğer `LAB-ELK-06` (SIEM Güvenlik Analizi) çalışmasını yapacaksanız, Nginx servisinin açık kalması faydalıdır. Yalnızca bu modülü bağımsız test ettiyseniz veya SIEM modülünü tamamladıysanız kapatın:
 
 ```bash
 cd 02-workspace-apps-logging/sample-apps

@@ -1,8 +1,15 @@
 # LAB-ELK-03 — Docker Daemon ve Konteyner Loglarının Toplanması
 
-| Seviye | Tahmini Süre | Profil / Araçlar | Açık Portlar |
-|:---:|:---:|:---:|:---:|
-| Orta | 30 Dakika | `docker`, `filebeat`, `add_docker_metadata` | - |
+| Seviye | Profil / Araçlar | Açık Portlar |
+|:---:|:---:|:---:|
+| Orta | `docker`, `filebeat`, `add_docker_metadata` | 15601 / 5601 (Kibana) |
+
+---
+
+## Ön Koşullar ve Bağımlılıklar
+
+* **Zorunlu Bağımlılık:** `00-elk-core-stack` modülünün (`elasticsearch`, `logstash`, `kibana`) çalışıyor olması gerekmektedir.
+* Host üzerindeki `/var/run/docker.sock` soketine okuma izninizin olması gerekir.
 
 ---
 
@@ -70,6 +77,8 @@ curl -s "http://localhost:9200/docker-containers-*/_search?q=container.name:demo
 ---
 
 ## Temizlik
+
+> **Not:** Bu işlem yalnızca Docker log toplayıcı konteynerini durdurur; merkezi ELK omurgası (`00-elk-core-stack`) çalışmaya devam eder.
 
 ```bash
 cd 03-docker-container-logs

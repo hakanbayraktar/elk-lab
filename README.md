@@ -1,16 +1,16 @@
-# 🔍 Elastic Stack (ELK 8.x) Hands-on Lab Serisi
+# Elastic Stack (ELK 8.x) Hands-on Lab Serisi
 
 Bu çalışma serisi; Linux işletim sistemi temellerinden başlayarak Elasticsearch 8.x, Logstash, Kibana ve Filebeat bileşenlerinin kurulumunu, Linux sistem loglarının, çok dilli mikroservislerin, Docker konteynerlerinin ve Kubernetes küme loglarının merkezi olarak toplanmasını, Kibana görselleştirmelerini, SIEM güvenlik analizini ve prodüksiyon optimizasyonlarını uygulamalı olarak deneyimlemek için hazırlanmış uçtan uca pratik rehberidir.
 
 ---
 
-## 🏛️ Mimari ve Çalışma Modeli
+## Mimari ve Çalışma Modeli
 
 Bu laboratuvar serisinde **Aşamalı Tekil Yığın (Single-Stack Architecture)** prensibi uygulanır. Modül 00'da merkezi ELK omurgası tek bir Docker Compose dosyası ile ayağa kaldırılır. Ardından gelen her modülde bu omurgaya sırasıyla yeni bir log kaynağı bağlanır:
 
 ```text
                                ┌─────────────────────────────┐
-                               │     Kibana UI (:5601)       │
+                               │  Kibana UI (:15601 / :5601) │
                                │  (Discover, Lens, Dashboards│
                                │    KQL & Security SIEM)     │
                                └──────────────▲──────────────┘
@@ -31,33 +31,58 @@ Bu laboratuvar serisinde **Aşamalı Tekil Yığın (Single-Stack Architecture)*
 │  01-Linux Host    │     │ 02-Workspace   │  │  │ 04-Kubernetes Cluster (Kind)  │
 │  auth.log, syslog │     │ Nginx & API    │  │  │ Pod logs, cri parser,         │
 │  (Filebeat /var)  │     │ (Grok & JSON)  │  │  │ add_kubernetes_metadata       │
-└───────────────────┘     └────────────────┘  │  └───────────────────────────────┘
-                                              │
-                                 ┌────────────┴────────────────┐
-                                 │ 03-Docker Container Logs    │
-                                 │ JSON File /var/run/docker   │
-                                 │ add_docker_metadata         │
-                                 └─────────────────────────────┘
+└───┬───────────────┘     └────────────────┘  │  └───────────────────────────────┘
+    │                                         │
+    │                            ┌────────────┴────────────────┐
+    │                            │ 03-Docker Container Logs    │
+    │                            │ JSON File /var/run/docker   │
+    │                            │ add_docker_metadata         │
+    │                            └─────────────────────────────┘
 ```
 
 ---
 
-## 📚 Laboratuvar Modül Haritası
+## Laboratuvar Modül Haritası
 
-| Dizin | Modül Adı | Seviye | Süre | Açık Portlar | Odak Alanı |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| [`00-elk-core-stack`](00-elk-core-stack/README.md) | **Merkezi ELK 8.x Kurulumu** | Başlangıç | 30 Dk | `9200`, `5601`, `5044`, `5000` | Elasticsearch, Logstash, Kibana, Docker Compose, `vm.max_map_count` |
-| [`01-linux-system-logs`](01-linux-system-logs/README.md) | **Linux Sistem Logları** | Başlangıç | 25 Dk | `5601` | `auth.log`, `syslog`, Filebeat filestream, SSH oturum izleme |
-| [`02-workspace-apps-logging`](02-workspace-apps-logging/README.md) | **Mikroservis Logları** | Orta | 30 Dk | `8081`, `3001`, `5601` | Nginx Combined Access Log (Grok), Node.js Express JSON API |
-| [`03-docker-container-logs`](03-docker-container-logs/README.md) | **Docker Konteyner Logları** | Orta | 25 Dk | `5601` | Docker JSON Driver, `/var/run/docker.sock`, `add_docker_metadata` |
-| [`04-kubernetes-cluster-logs`](04-kubernetes-cluster-logs/README.md) | **Kubernetes Küme Logları** | Orta | 35 Dk | `5601` | Filebeat DaemonSet, RBAC, CRI Parser, Çok Satırlı (Multiline) Hata Ayrıştırma |
-| [`05-kibana-dashboards-and-kql`](05-kibana-dashboards-and-kql/README.md) | **Kibana, KQL & Panolar** | Başlangıç/Orta | 30 Dk | `5601` | KQL Filtreleme, Kibana Lens Görselleştirmeleri, Saved Objects İçe Aktarma |
-| [`06-siem-and-security-analytics`](06-siem-and-security-analytics/README.md) | **Elastic SIEM & Güvenlik** | İleri | 35 Dk | `5601`, `5000` | SSH Kaba Kuvvet (Brute Force) Tespiti, Web Dizin Atlama (Path Traversal), ECS |
-| [`07-pitfalls-and-production-tuning`](07-pitfalls-and-production-tuning/README.md) | **Prodüksiyon & Sorun Giderme** | İleri | 35 Dk | `9200`, `5601` | Sarı (YELLOW) Küme Teşhisi, Disk Flood Stage Kilidi Açma, 32GB JVM Kuralı, ILM |
+| Dizin | Modül Adı | Seviye | Açık Portlar | Odak Alanı |
+| :--- | :--- | :--- | :--- | :--- |
+| [`00-elk-core-stack`](00-elk-core-stack/README.md) | **Merkezi ELK 8.x Kurulumu** | Başlangıç | `9200`, `15601` (5601), `5044`, `5000` | Elasticsearch, Logstash, Kibana, Docker Compose, `vm.max_map_count` |
+| [`01-linux-system-logs`](01-linux-system-logs/README.md) | **Linux Sistem Logları** | Başlangıç | `15601` (Kibana) | `auth.log`, `syslog`, Filebeat filestream, SSH oturum izleme |
+| [`02-workspace-apps-logging`](02-workspace-apps-logging/README.md) | **Mikroservis Logları** | Orta | `8081`, `3001`, `15601` | Nginx Combined Access Log (Grok), Node.js Express JSON API |
+| [`03-docker-container-logs`](03-docker-container-logs/README.md) | **Docker Konteyner Logları** | Orta | `15601` (Kibana) | Docker JSON Driver, `/var/run/docker.sock`, `add_docker_metadata` |
+| [`04-kubernetes-cluster-logs`](04-kubernetes-cluster-logs/README.md) | **Kubernetes Küme Logları** | Orta | `15601` (Kibana), `5044` | Filebeat DaemonSet, RBAC, CRI Parser, Çok Satırlı (Multiline) Hata Ayrıştırma |
+| [`05-kibana-dashboards-and-kql`](05-kibana-dashboards-and-kql/README.md) | **Kibana, KQL & Panolar** | Başlangıç/Orta | `15601` (5601) | KQL Filtreleme, Kibana Lens Görselleştirmeleri, Saved Objects İçe Aktarma |
+| [`06-siem-and-security-analytics`](06-siem-and-security-analytics/README.md) | **Elastic SIEM & Güvenlik** | İleri | `15601`, `5000`, `8081` | SSH Kaba Kuvvet (Brute Force) Tespiti, Web Dizin Atlama (Path Traversal), ECS |
+| [`07-pitfalls-and-production-tuning`](07-pitfalls-and-production-tuning/README.md) | **Prodüksiyon & Sorun Giderme** | İleri | `9200`, `15601` | Sarı (YELLOW) Küme Teşhisi, Disk Flood Stage Kilidi Açma, 32GB JVM Kuralı, ILM |
 
 ---
 
-## 🚀 Hızlı Başlangıç
+## Laboratuvar Bağımlılıkları ve Kaynak Yönetimi Kuralları
+
+1. **Mevcut Altyapı ve Kind Uyumu:**
+   * Bu laboratuvar serisi için yeni bir Docker veya Kind ortamı kurulmasına **gerek yoktur**.
+   * Önceki eğitim günlerinden gelen Docker motoru ve mevcut Kind kümesi (`kind-devops`) doğrudan kullanılır.
+2. **Kritik Bileşenler — "Silmeyin" Uyarısı:**
+   * **`00-elk-core-stack` (Merkezi Omurga):** Elasticsearch (`:9200`), Logstash (`:5000/:5044`) ve Kibana (`:15601`) servislerini barındırır. 01'den 07'ye kadar olan tüm modüller loglarını buraya gönderir ve analizler bu Kibana arayüzünden yapılır. **Modül 07 tamamlanana kadar bu konteynerlar asla durdurulmamalı veya silinmemelidir.**
+   * **`02-workspace-apps-logging` (Hedef Nginx Servisi):** Modül 06 (SIEM Güvenlik Analizi), buradaki Nginx servisine (`:8081`) canlı web saldırı trafiği enjekte eder. Bu nedenle Modül 06 tamamlanana kadar açık kalmalıdır.
+   * **Kind Kubernetes Kümesi:** Modül 04 (`04-kubernetes-cluster-logs`), mevcut Kind kümesine bir Filebeat DaemonSet kurar. Kind kümesi kesinlikle silinmemelidir.
+3. **Bellek ve Kaynak Tüketimi:**
+   * ELK yığını toplamda yaklaşık **2.5 - 3 GB RAM** tüketir (Elasticsearch: 1 GB JVM Heap, Logstash: 512 MB JVM Heap, Kibana: ~500 MB).
+   * Öğrenci sunucusunda (16 GB / 32 GB RAM) diğer servislerle rahatlıkla paralel çalışabilir.
+4. **Eğitim Bitiminde Temizlik ve Kaynak Kurtarma:**
+   * Modül 04 tamamlandığında Kubernetes kaynaklarını hafifletmek için sadece DaemonSet silinebilir:
+     ```bash
+     kubectl delete -f 04-kubernetes-cluster-logs/filebeat-kubernetes-daemonset.yaml
+     ```
+   * Tüm ELK eğitim serisi tamamlandığında (Modül 07 sonrası), harcanan 3 GB RAM'i sisteme geri kazandırmak için kök dizinden tek komutla temizlik yapılır:
+     ```bash
+     ./teardown-all.sh
+     ```
+   * *Bu script Kind kümesini veya diğer eğitim konteynerlarını bozmaz; yalnızca ELK labına ait kaynakları güvenle kaldırır.*
+
+---
+
+## Hızlı Başlangıç
 
 ### Seçenek A: Tek Komutla Uçtan Uca Otomatik Kurulum (Turnkey Setup)
 
@@ -68,9 +93,11 @@ Tüm ELK omurgasını, canlı mikroservisleri, 40.000+ örnek log verisini, 8 fa
 ```
 
 Kurulum tamamlandığında Kibana arayüzüne tarayıcınızdan erişebilirsiniz:
-👉 **Kibana Dashboard Merkezi:** [http://localhost:5601/app/dashboards](http://localhost:5601/app/dashboards)
+* **Kurumsal HTTPS Portalı:** `https://studentXX-kibana.devopsatolyesi.com`
+* **Doğrudan IP Erişimi:** `http://<UBUNTU_IP>:15601` (veya `http://localhost:5601`)
+* **Kibana Dashboard Merkezi:** [http://localhost:5601/app/dashboards](http://localhost:5601/app/dashboards)
 
-Laboratuvarı tamamen kapatıp sıfırlamak için:
+Laboratuvarı tamamen kapatıp kaynakları serbest bırakmak için:
 ```bash
 ./teardown-all.sh
 ```
@@ -89,7 +116,7 @@ Laboratuvarı tamamen kapatıp sıfırlamak için:
   ```
 
 #### 2. Çekirdek Elastic Stack Omurgasını Başlatma
-* **Neden Gerekli?** Logların toplanması ve görselleştirilmesi için önce omurganın hazır olması gerekir: Elasticsearch (`:9200`), Logstash (`:5000/:5044`) ve Kibana (`:5601`).
+* **Neden Gerekli?** Logların toplanması ve görselleştirilmesi için önce omurganın hazır olması gerekir: Elasticsearch (`:9200`), Logstash (`:5000/:5044`) ve Kibana (`:15601 / :5601`).
 * **Komut:**
   ```bash
   docker compose -f 00-elk-core-stack/docker-compose.yml up -d
@@ -140,14 +167,16 @@ Laboratuvarı tamamen kapatıp sıfırlamak için:
 
 #### 8. Canlı Doğrulama ve Arayüzü Açma
 * **Tarayıcıda Açın:**
-  * 👉 **Dashboard Merkezi:** [http://localhost:5601/app/dashboards](http://localhost:5601/app/dashboards)
-  * 👉 **Discover (Canlı Log Akışı):** [http://localhost:5601/app/discover](http://localhost:5601/app/discover)
+  * **Kurumsal HTTPS Portalı:** `https://studentXX-kibana.devopsatolyesi.com`
+  * **Doğrudan IP:** `http://<UBUNTU_IP>:15601` (veya `http://localhost:5601`)
+  * **Dashboard Merkezi:** [http://localhost:5601/app/dashboards](http://localhost:5601/app/dashboards)
+  * **Discover (Canlı Log Akışı):** [http://localhost:5601/app/discover](http://localhost:5601/app/discover)
 
 ---
 
-## 🛡️ Prodüksiyon Kuralları ve En İyi Uygulamalar
+## Prodüksiyon Kuralları ve En İyi Uygulamalar
 
 1. **JVM %50 Kuralı ve 32 GB Sınırı:** Sunucu RAM'inin en fazla %50'si JVM heap'e (`-Xms = -Xmx`) ayrılır; kalan bellek OS Page Cache için bırakılır. Heap hiçbir zaman **32 GB**'ı aşmamalıdır (Compressed OOPs devre dışı kalır).
 2. **Disk Watermark Koruması:** Disk doluluğu %95'e ulaştığında küme otomatik olarak `read_only_allow_delete: true` kilidine geçer. Disk temizlendikten sonra kilit `07-pitfalls-and-production-tuning/scripts/unlock-flood-stage.sh` ile kaldırılır.
-3. **Temiz Yaşam Döngüsü:** Tüm lablar Docker Compose ve Kubernetes manifestleri ile izole edilmiştir. Çalışma bittiğinde ortam host üzerinde artık dosya bırakmadan `docker compose down -v` ile tamamen sıfırlanabilir.
+3. **Temiz Yaşam Döngüsü:** Tüm lablar Docker Compose ve Kubernetes manifestleri ile izole edilmiştir. Çalışma bittiğinde ortam host üzerinde artık dosya bırakmadan `teardown-all.sh` ile tamamen sıfırlanabilir.
 4. **Nginx Reverse Proxy ile Dış Erişim Koruması:** Kibana ve Elasticsearch API'si dış dünyaya açıldığında Nginx Reverse Proxy katmanında HTTP Basic Auth (`admin / BilgincIT454`) ile şifrelenir. Böylece dahili Logstash, Filebeat ve Fluent-Bit akışları kesintisiz çalışırken tarayıcı erişimleri güven altına alınır.

@@ -1,8 +1,15 @@
 # LAB-ELK-01 — Linux Host Sistem ve Güvenlik Loglarının Toplanması
 
-| Seviye | Tahmini Süre | Profil / Araçlar | Açık Portlar |
-|:---:|:---:|:---:|:---:|
-| Başlangıç | 30 Dakika | `filebeat`, `systemd`, `logger` | - |
+| Seviye | Profil / Araçlar | Açık Portlar |
+|:---:|:---:|:---:|
+| Başlangıç | `filebeat`, `systemd`, `logger` | 15601 / 5601 (Kibana) |
+
+---
+
+## Ön Koşullar ve Bağımlılıklar
+
+* **Zorunlu Bağımlılık:** `00-elk-core-stack` modülünün (`elasticsearch`, `logstash`, `kibana`) çalışıyor olması gerekmektedir. Logstash `:5044` portunun dinlemede olduğunu doğrulayın (`nc -zv localhost 5044`).
+* Bu modüldeki Filebeat ajanları logları merkezi Logstash servisine aktaracaktır.
 
 ---
 
@@ -32,7 +39,11 @@ Eğer sisteme paket kurmak istemiyorsanız, host `/var/log` dizinini salt-okunur
 
 ```bash
 cd 01-linux-system-logs
-docker run -d --name filebeat-linux --net=host   --user=root   -v $(pwd)/filebeat-linux.yml:/usr/share/filebeat/filebeat.yml:ro   -v /var/log:/var/log:ro   docker.elastic.co/beats/filebeat:8.17.0 -e -strict.perms=false
+docker run -d --name filebeat-linux --net=host \
+  --user=root \
+  -v $(pwd)/filebeat-linux.yml:/usr/share/filebeat/filebeat.yml:ro \
+  -v /var/log:/var/log:ro \
+  docker.elastic.co/beats/filebeat:8.17.0 -e -strict.perms=false
 ```
 
 ---
@@ -56,7 +67,7 @@ curl -s "http://localhost:9200/logstash-*/_search?q=log_type:system_auth&pretty"
 
 ### 3. Kibana Discover Ekranında İnceleme
 
-1. Tarayıcıdan `http://localhost:5601` adresine gidin.
+1. Tarayıcınızdan `https://studentXX-kibana.devopsatolyesi.com` veya `http://<UBUNTU_IP>:15601` (yerel `http://localhost:5601`) adresine gidin.
 2. **Management > Stack Management > Data Views** sekmesinden `logstash-*` kalıbıyla yeni bir Data View oluşturun (`@timestamp` seçili).
 3. **Discover** ekranına gidin ve arama çubuğuna şunu yazın:
    ```kql
@@ -67,6 +78,8 @@ curl -s "http://localhost:9200/logstash-*/_search?q=log_type:system_auth&pretty"
 ---
 
 ## Temizlik
+
+> **Not:** Bu temizlik işlemi yalnızca bu labda başlatılan Filebeat ajanını durdurur. Ana omurga (`00-elk-core-stack`) sonraki lablar için çalışır durumda kalmalıdır.
 
 ```bash
 # Eğer native servis olarak kurduysanız:

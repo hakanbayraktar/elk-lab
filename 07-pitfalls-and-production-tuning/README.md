@@ -1,10 +1,10 @@
 # LAB-ELK-07 — Prodüksiyon İpuçları, Shard Yönetimi ve Sorun Giderme
 
-| Seviye | Tahmini Süre | Profil / Araçlar | Açık Portlar |
-| :--- | :--- | :--- | :--- |
-| İleri (Advanced) | 35 Dakika | Elasticsearch Admin API, cURL, jq, ILM | 9200 (Elasticsearch), 5601 (Kibana) |
+| Seviye | Profil / Araçlar | Açık Portlar |
+| :--- | :--- | :--- |
+| İleri (Advanced) | Elasticsearch Admin API, cURL, jq, ILM | 9200 (Elasticsearch), 15601 / 5601 (Kibana) |
 
-[LAB-ELK-07.zip](LAB-ELK-07.zip)
+---
 
 ## Amaç
 
@@ -14,9 +14,11 @@
 - JVM bellek yönetiminde %50 kuralı ve 32 GB Compressed OOPs (Ordinary Object Pointers) mimari sınırını anlamak.
 - İndeks Yaşam Döngüsü Yönetimi (ILM - Index Lifecycle Management) ile otomatik indeks rotasyonu ve saklama (retention) politikaları uygulamak.
 
-## Ön Koşullar
+---
 
-- `00-elk-core-stack` servislerinin ayakta olması (`http://localhost:9200`).
+## Ön Koşullar ve Bağımlılıklar
+
+- **Zorunlu Bağımlılık:** `00-elk-core-stack` servislerinin ayakta olması (`http://localhost:9200`).
 - Terminalde `curl` ve `jq` araçlarının hazır olması.
 
 ## Kritik Prodüksiyon Mimarisi ve Tuzaklar
@@ -119,10 +121,21 @@ curl -s "http://localhost:9200/_ilm/policy/devops_7day_retention?pretty"
    ```
    Tüm shard'ların `STARTED` durumunda olduğunu teyit edin.
 
-## Temizlik
+## Temizlik ve Ortamın Sıfırlanması
 
-Test ILM politikasını kaldırmak isterseniz:
+### 1. Test ILM Politikasını Temizleme
 
 ```bash
 curl -s -X DELETE "http://localhost:9200/_ilm/policy/devops_7day_retention"
 ```
+
+### 2. Tüm ELK Laboratuvarını Sıfırlama ve Kaynakları Serbest Bırakma
+
+ELK çalışma serisini tamamladıktan sonra sunucunuzdaki ~2.5 - 3 GB RAM kaynağını sisteme geri kazandırmak için kök dizindeki tek temizlik komutunu çalıştırabilirsiniz:
+
+```bash
+cd ..
+./teardown-all.sh
+```
+
+*Bu komut Kind kümesine veya diğer eğitim bileşenlerine dokunmadan yalnızca ELK lab servislerini güvenle temizler.*

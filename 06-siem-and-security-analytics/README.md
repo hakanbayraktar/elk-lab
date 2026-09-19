@@ -1,10 +1,10 @@
 # LAB-ELK-06 — Elastic SIEM ve Güvenlik Olayları Analizi
 
-| Seviye | Tahmini Süre | Profil / Araçlar | Açık Portlar |
-| :--- | :--- | :--- | :--- |
-| İleri (Advanced) | 35 Dakika | Elastic SIEM, Kibana Security, ECS, Netcat, cURL | 5601 (Kibana), 5000/5044 (Logstash), 8081 (Nginx) |
+| Seviye | Profil / Araçlar | Açık Portlar |
+| :--- | :--- | :--- |
+| İleri (Advanced) | Elastic SIEM, Kibana Security, ECS, Netcat, cURL | 15601 / 5601 (Kibana), 5000/5044 (Logstash), 8081 (Nginx) |
 
-[LAB-ELK-06.zip](LAB-ELK-06.zip)
+---
 
 ## Amaç
 
@@ -13,12 +13,14 @@
 - Web sunucu erişim loglarında Path Traversal (`../../etc/passwd`), SQL Injection ve bilgi ifşası taramalarını tespit etmek (OWASP Top 10).
 - Simüle edilen siber saldırıları Kibana Discover ve KQL sorguları ile adli bilişim (forensics) bakış açısıyla analiz etmek.
 
+---
+
 ## Ön Koşullar ve Bağlı Olduğu Laboratuvarlar
 
 Bu laboratuvar ortamda daha önce ayağa kaldırılmış olan şu iki modülü kullanır:
 
 1. **`00-elk-core-stack` (Zorunlu — Ana Omurga):**
-   - Elasticsearch (`:9200`), Logstash (`:5000` TCP / `:5044` Beats), Kibana (`:5601`).
+   - Elasticsearch (`:9200`), Logstash (`:5000` TCP / `:5044` Beats), Kibana (`:15601 / :5601`).
 2. **`02-workspace-apps-logging` (Zorunlu — Hedef Web Servisi):**
    - Nginx Web Sunucusu (`:8081`) saldırı simülasyonundaki HTTP isteklerinin canlı hedefidir.
 

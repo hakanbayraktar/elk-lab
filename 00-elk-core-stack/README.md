@@ -1,8 +1,11 @@
 # LAB-ELK-00 — Çekirdek Elastic Stack Kurulumu (Elasticsearch, Logstash, Kibana)
 
-| Seviye | Tahmini Süre | Profil / Araçlar | Açık Portlar |
-|:---:|:---:|:---:|:---:|
-| Başlangıç | 25 Dakika | `docker compose`, `curl`, `jq` | 9200 (ES), 5601 (Kibana), 5044 (Beats), 5000 (TCP) |
+| Seviye | Profil / Araçlar | Açık Portlar |
+|:---:|:---:|:---:|
+| Başlangıç | `docker compose`, `curl`, `jq` | 9200 (ES), 15601 / 5601 (Kibana), 5044 (Beats), 5000 (TCP) |
+
+> **DİKKAT — Merkezi Omurga Bağımlılığı (Bu Stack'i Silmeyin):**
+> Bu laboratuvarda kurulan Elasticsearch, Logstash ve Kibana yığını, sonraki tüm modüllerin (`01` - `07`) bağlandığı merkezi omurgadır. 07. modül tamamlanana kadar bu konteynerları **durdurmayın veya silmeyin**.
 
 ---
 
@@ -76,7 +79,9 @@ curl -s http://localhost:9200/_cluster/health | jq .
 curl -s -I http://localhost:5601/api/status | head -n 5
 ```
 
-*Tarayıcınızdan `http://localhost:5601` adresine giderek Kibana ana ekranına erişin.*
+*Tarayıcınızdan şu adreslerden biriyle Kibana ana ekranına erişin:*
+* **Kurumsal Portal:** `https://studentXX-kibana.devopsatolyesi.com`
+* **Doğrudan IP:** `http://<UBUNTU_IP>:15601` (veya yerel test için `http://localhost:5601`)
 
 ### 3. Logstash TCP Portuna Örnek Log Gönderme
 
@@ -91,7 +96,7 @@ curl -s "http://localhost:9200/logstash-*/_search?pretty" | jq '.hits.hits[0]._s
 
 ---
 
-## 📌 Sürüm Notu: Elastic Stack 8.x ve Gelecek 9.0 Sürümü
+## Sürüm Notu: Elastic Stack 8.x ve Gelecek 9.0 Sürümü
 
 * **Neden 8.17.x Kullanıyoruz?**
   Elastic NV tarafından henüz resmi olarak **Elasticsearch 9.0 sürümü yayınlanmamıştır** (GA / General Availability değildir). Şu an prodüksiyon ortamlarında kullanılan en kararlı, güncel ve LTS destekli ana sürüm serisi **Elasticsearch 8.17.x** serisidir.
@@ -100,7 +105,7 @@ curl -s "http://localhost:9200/logstash-*/_search?pretty" | jq '.hits.hits[0]._s
 
 ---
 
-## 🛠️ Manuel Yönetim ve Eğitmen / Öğrenci Kılavuzu
+## Manuel Yönetim ve Eğitmen / Öğrenci Kılavuzu
 
 Bu bölümde öğrencilere sınıfta canlı gösterilebilecek temel ELK yönetim komutları ve adımları yer almaktadır.
 
@@ -379,9 +384,14 @@ output {
 
 ## Temizlik
 
-Laboratuvarı sıfırlamak veya kaynakları serbest bırakmak istediğinizde:
+> **Önemli Bağımlılık Uyarısı (Şimdi Silmeyin):**
+> `00-elk-core-stack`, sonraki tüm laboratuvarların (`01` - `07`) loglarını topladığı ve görselleştirdiği merkezi omurgadır. 01'den 07'ye kadar olan labları yapacaksanız bu aşamada konteynerları **silmeyin ve durdurmayın**.
+>
+> Tüm ELK eğitim serisi tamamlandığında (Modül 07 bittikten sonra), sunucu belleğini (~2.5 - 3 GB RAM) geri kazanmak için temizlik komutu çalıştırılmalıdır:
 
 ```bash
+# SADECE tüm modüller (01-07) bittiğinde çalıştırın:
+cd 00-elk-core-stack
 docker compose down -v
 ```
 
