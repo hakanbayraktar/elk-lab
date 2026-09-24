@@ -6,19 +6,25 @@
 
 [LAB-ELK-05.zip](LAB-ELK-05.zip)
 
+> [!IMPORTANT]
+> **DİKKAT: `00-elk-core-stack` AÇIK KALMALIDIR!**
+> Bu laboratuvar, önceki modüllerde `00-elk-core-stack` içerisine toplanan verileri Kibana üzerinde inceler ve görselleştirir. `00-elk-core-stack` dizinindeki Elasticsearch ve Kibana servislerini **kesinlikle durdurmayın veya silmeyin**.
+
+---
+
 ## Amaç
-* Kibana 8 modern web arayüzünde Data View (Veri Görünümü / İndeks Kalıbı) tanımlamak ve alan eşlemelerini incelemek.
-* KQL (Kibana Query Language) sözdizimi ile yapılandırılmış loglar üzerinde boolean mantık (`and`, `or`, `not`), joker karakter (`*`) ve sayısal eşik sorguları gerçekleştirmek.
-* Kibana Lens arayüzünü kullanarak sürükle-bırak yöntemiyle zaman serisi (XY Chart), çubuk (Bar Chart) ve pasta/halka (Donut) grafikleri üretmek.
-* Üretilen grafikleri merkezi bir operasyonel panoda (Dashboard) birleştirmek ve dışa/içe aktarmak (`Saved Objects`).
-* Hazırlanan otomatik aktarım betiği (`import-dashboards.sh`) ile DevOps, Kubernetes ve SIEM operasyonel panolarını tek adımda sisteme yüklemek.
+* Kibana 8 web arayüzünde Data View (Veri Görünümü / İndeks Kalıbı) mantığını ve alan eşlemelerini kavramak.
+* KQL (Kibana Query Language) sözdizimi ile boolean (`and`, `or`, `not`), joker karakter (`*`) ve sayısal filtreleme yapmak.
+* Kibana Lens arayüzünde sürükle-bırak yöntemiyle zaman serisi, çubuk (Bar Chart) ve pasta/halka (Donut) grafikleri üretmek.
+* Üretilen grafikleri tek bir operasyonel panoda (Dashboard) birleştirmek ve dışa/içe aktarmak (`Saved Objects`).
+* Hazırlanan otomatik aktarım betiği (`import-dashboards.sh`) ile DevOps ve Kubernetes panolarını tek adımda yüklemek.
 
 ---
 
 ## Ön Koşullar
-* **Merkezi ELK Omurgası:** `00-elk-core-stack` servislerinin (`elasticsearch`, `kibana`) çalışır durumda olması.
+* **Merkezi ELK Omurgası:** `00-elk-core-stack` servislerinin (`elasticsearch`, `kibana`) çalışıyor olması gereklidir.
 * Önceki laboratuvarlarda Elasticsearch'e aktarılan logların bulunması (`system-logs-*`, `app-logs-*`, `k8s-logs-*`, `docker-containers-*`).
-* Kimlik Doğrulama: Kullanıcı: `elastic` | Şifre: `BilginIT454`.
+* Giriş Bilgileri: Kullanıcı: `elastic` | Şifre: `BilginIT454` | Port: `15601`.
 
 ---
 
@@ -46,7 +52,7 @@
 
 ## KQL (Kibana Query Language) Hızlı Referans Rehberi
 
-KQL, arama yaparken otomatik tamamlama (autocomplete) sunan modern sorgulama dilidir:
+KQL, arama yaparken otomatik tamamlama (autocomplete) sunan kullanıcı dostu sorgulama dilidir:
 
 | Senaryo | Örnek KQL Sözdizimi | Açıklama |
 | :--- | :--- | :--- |
@@ -62,23 +68,23 @@ KQL, arama yaparken otomatik tamamlama (autocomplete) sunan modern sorgulama dil
 
 ## Adım Adım Uygulama Rehberi
 
-### 1. Kibana Arayüzüne Bağlanma
+### Adım 1: Tarayıcıdan Kibana Arayüzünü Açın
 
-Tarayıcınızdan Kibana paneline gidin:
-* **URL:** `http://<SUNUCU_IP>:15601` veya `https://studentXX-kibana.devopsatolyesi.com`
-* **Giriş Bilgileri:** Kullanıcı: `elastic` | Şifre: `BilginIT454`
+Tarayıcınızdan Kibana paneline bağlanın:
+* **Adres:** `http://<SUNUCU_IP>:15601` veya `https://studentXX-kibana.devopsatolyesi.com`
+* **Giriş:** Kullanıcı: `elastic` | Şifre: `BilginIT454`
 
 Sol menüden **Analytics > Discover** bölümünü açın.
 
 ---
 
-### 2. Discover Ekranında 4 Temel Analiz Senaryosu
+### Adım 2: Discover Ekranında 4 Pratik KQL Arama Senaryosu
 
 1. **Senaryo A: Başarısız SSH Oturum Girişleri (Güvenlik Analizi):**
    * Veri Görünümünden **`Linux Sistem Logs (Auth & Syslog)`** seçin.
    * Zaman aralığını **Last 24 hours** yapın.
    * KQL Sorgusu: `message : "Failed password"`
-2. **Senaryo B: Web Sunucusunda Şüpheli URL Taramaları:**
+2. **Senaryo B: Web Sunucusunda Şüpheli İstek Taramaları:**
    * Veri Görünümünden **`Application Logs (Nginx & API)`** seçin.
    * KQL Sorgusu: `response_code >= 400 and method : "GET"`
 3. **Senaryo C: Kubernetes Pod Hata Taraması:**
@@ -90,7 +96,7 @@ Sol menüden **Analytics > Discover** bölümünü açın.
 
 ---
 
-### 3. Kibana Lens ile Adım Adım Görselleştirme Oluşturma
+### Adım 3: Kibana Lens ile Adım Adım Yeni Bir Grafik Üretin
 
 1. Sol menüden **Analytics > Dashboard** seçeneğine tıklayın.
 2. Sağ üstten **Create dashboard** butonuna basın.
@@ -103,7 +109,7 @@ Sol menüden **Analytics > Discover** bölümünü açın.
 
 ---
 
-### 4. Hazır Panoları Script ile Tek Komutta İçe Aktarma
+### Adım 4: Hazır Panoları Script ile Tek Komutta İçe Aktarın
 
 Tüm hazır DevOps, Kubernetes, CI/CD ve SIEM panolarını otomatik yüklemek için hazırlanan scripti çalıştırın:
 
@@ -133,4 +139,5 @@ Kibana'da **Analytics > Dashboard** listesini açın. Aşağıdaki panoların li
 
 Bu laboratuvar bir görselleştirme ve analiz modülüdür; arka planda çalışan ayrı bir ajan bulunmadığından herhangi bir konteyneri kapatmanız gerekmez.
 
-> **Önemli Not:** Merkezi ELK omurgası (`00-elk-core-stack`), sonraki SIEM ve Sorun Giderme laboratuvarları için açık kalmalıdır.
+> [!WARNING]
+> **Merkezi Omurga Hatırlatması:** `00-elk-core-stack` servislerini (`elasticsearch`, `kibana`) **kesinlikle kapatmayın**. Sonraki tüm laboratuvarlar bu omurga üzerinde çalışır.

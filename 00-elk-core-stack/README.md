@@ -6,6 +6,10 @@
 
 [LAB-ELK-00.zip](LAB-ELK-00.zip)
 
+> [!IMPORTANT]
+> **DİKKAT: TÜM EĞİTİM BOYUNCA BU LAB AÇIK KALMALIDIR!**
+> `00-elk-core-stack`, bu serideki tüm diğer laboratuvarların (01'den 07'ye kadar) merkezi omurgasıdır. Burada ayağa kaldırılan Elasticsearch, Logstash ve Kibana servislerini **kesinlikle durdurmayın veya silmeyin**. Tüm sonraki lablar bu omurgaya bağlanır.
+
 ## Amaç
 * Docker Compose ile güvenliği aktif Elastic Stack (Elasticsearch, Logstash, Kibana) altyapısını başlatmak.
 * Elasticsearch REST API ve Kibana Dev Tools üzerinden manuel doküman indeksleme, güncelleme ve arama işlemlerini gerçekleştirmek.
@@ -270,7 +274,8 @@ Tüm bileşenlerin sağlıklı çalıştığını doğrulamak için:
 
 ## Temizlik
 
-Eğer laboratuvarı tamamen sıfırlamak ve kaynakları serbest bırakmak isterseniz:
+> [!WARNING]
+> **Eğitim Süresince Kapatmayın:** Eğer sonraki laboratuvarları (01'den 07'ye kadar) yapacaksanız bu adımı **kesinlikle çalıştırmayın**. Yalnızca tüm eğitim serisi bittiğinde ve ortamı tamamen sıfırlamak istediğinizde bu komutu verin:
 
 ```bash
 docker compose down -v

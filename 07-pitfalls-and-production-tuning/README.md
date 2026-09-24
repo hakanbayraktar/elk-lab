@@ -6,6 +6,12 @@
 
 [LAB-ELK-07.zip](LAB-ELK-07.zip)
 
+> [!IMPORTANT]
+> **DİKKAT: `00-elk-core-stack` AÇIK KALMALIDIR!**
+> Bu laboratuvardaki küme sağlığı, replica optimizasyonu, disk kilidi açma ve ILM operasyonları doğrudan `00-elk-core-stack` üzerinde çalışan canlı Elasticsearch kümesi üzerinde icra edilir. Bu nedenle 00 labındaki servisleri **kesinlikle durdurmayın veya silmeyin**.
+
+---
+
 ## Amaç
 * Elasticsearch küme sağlığı durumlarını (`green`, `yellow`, `red`) ve atanmamış shard (`unassigned shard`) nedenlerini analiz etmek.
 * Tek düğümlü (single-node) ortamlarda kopya (replica) sayısını 0'a çekerek küme sağlığını `YELLOW` durumundan `GREEN` durumuna getirmek.
@@ -16,9 +22,9 @@
 ---
 
 ## Ön Koşullar
-* **Merkezi ELK Omurgası:** `00-elk-core-stack` servislerinin (`elasticsearch`, `kibana`) çalışır durumda olması.
+* **Merkezi ELK Omurgası:** `00-elk-core-stack` servislerinin (`elasticsearch`, `kibana`) çalışır durumda olması gereklidir.
 * Terminalde `curl` ve `jq` araçlarının bulunması.
-* Kimlik Doğrulama: Kullanıcı: `elastic` | Şifre: `BilginIT454`.
+* Kimlik Doğrulama: Kullanıcı: `elastic` | Şifre: `BilginIT454` | Port: `15601`.
 
 ---
 
@@ -41,7 +47,7 @@ Elasticsearch disk doluluk oranını 3 eşikle takip eder:
 
 ## Adım Adım Uygulama Rehberi
 
-### 1. Küme Sağlığı ve Shard Tanılaması
+### Adım 1: Küme Sağlığını ve Shard Durumunu Teşhis Edin
 
 Kümenin genel durumunu, JVM bellek kullanımını ve disk alanını analiz eden tanı betiğini çalıştırın:
 
@@ -60,7 +66,7 @@ curl -s -u elastic:BilginIT454 -X POST "http://localhost:9200/_cluster/allocatio
 
 ---
 
-### 2. Tek Düğümlü Ortamda Kümeyi YEŞİL (GREEN) Yapma
+### Adım 2: Tek Düğümlü Ortamda Kümeyi YEŞİL (GREEN) Yapın
 
 Tek düğümlü lab ortamında tüm indekslerin replica sayısını 0'a çekerek gereksiz bekleyen shard'ları kaldırın:
 
@@ -78,7 +84,7 @@ curl -s -u elastic:BilginIT454 "http://localhost:9200/_cluster/health?pretty" | 
 
 ---
 
-### 3. Disk Flood Stage Kilidini Çözme
+### Adım 3: Disk %95 Dolduğunda Kilitlenen Flood Stage Kilidini Açın
 
 Eğer sunucu diski dolduğu için indeksler salt-okunur duruma kilitlenmişse, kilidi açmak için hazırlanan scripti çalıştırın:
 
@@ -94,7 +100,7 @@ curl -s -u elastic:BilginIT454 "http://localhost:9200/*/_settings/index.blocks.r
 
 ---
 
-### 4. İndeks Yaşam Döngüsü (ILM) Politikası Tanımlama
+### Adım 4: 7 Günlük İndeks Yaşam Döngüsü (ILM) Politikası Tanımlayın
 
 Logların diski sınırsız doldurmasını engellemek için 1 gün veya 30 GB dolduğunda yeni indekse geçen (rollover), 7 gün sonra ise eski indeksleri otomatik silen ILM politikasını tanımlayın:
 

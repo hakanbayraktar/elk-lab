@@ -6,6 +6,13 @@
 
 [LAB-ELK-06.zip](LAB-ELK-06.zip)
 
+> [!IMPORTANT]
+> **DİKKAT: `00-elk-core-stack` AÇIK KALMALIDIR!**
+> Bu laboratuvardaki güvenlik olayları `00-elk-core-stack` içindeki Logstash ve Elasticsearch'e akar. 00 labındaki servisleri **kesinlikle durdurmayın veya silmeyin**.
+> Ayrıca bu lab, `02-workspace-apps-logging` laboratuvarında ayağa kaldırdığınız Nginx (`:8081`) servisine canlı saldırı trafiği gönderir; Nginx'in de ayakta olduğunu teyit edin.
+
+---
+
 ## Amaç
 * Elastic Stack'in SIEM (Security Information and Event Management) yeteneklerini ve ECS (Elastic Common Schema) veri uyumunu uygulamalı olarak incelemek.
 * Linux sistem loglarında SSH kaba kuvvet (brute-force) oturum açma girişimlerini eşik (threshold) kurallarıyla otomatik tespit etmek (MITRE ATT&CK T1110).
@@ -15,11 +22,11 @@
 ---
 
 ## Ön Koşullar
-* **Merkezi ELK Omurgası:** `00-elk-core-stack` servislerinin (`elasticsearch`, `logstash`, `kibana`) çalışıyor olması gerekmektedir.
-* **Canlı Hedef Web Servisi:** `02-workspace-apps-logging` altındaki Nginx web sunucusunun (`:8081`) ayakta olması gerekmektedir.
-* Kimlik Doğrulama: Kullanıcı: `elastic` | Şifre: `BilginIT454`.
+* **Merkezi ELK Omurgası:** `00-elk-core-stack` servislerinin (`elasticsearch`, `logstash`, `kibana`) çalışıyor olması gereklidir.
+* **Canlı Hedef Web Servisi:** `02-workspace-apps-logging` altındaki Nginx web sunucusunun (`:8081`) ayakta olması gereklidir.
+* Kimlik Doğrulama: Kullanıcı: `elastic` | Şifre: `BilginIT454` | Port: `15601`.
 
-Eğer servisler çalışmıyorsa başlatın:
+Eğer servisler çalışmıyorsa tek komutla başlatın:
 
 ```bash
 # 1. ELK Omurgasını Kontrol Edin
@@ -55,7 +62,7 @@ cd ~/elk-lab/02-workspace-apps-logging/sample-apps && docker compose -f docker-c
 
 ## Adım Adım Uygulama Rehberi
 
-### 1. Güvenlik Kurallarının Mantığını İnceleme
+### Adım 1: Güvenlik Kurallarının Mantığını İnceleyin
 
 `rules/` dizini altındaki iki temel SIEM kuralını inceleyin:
 
@@ -66,11 +73,11 @@ cat rules/web-attack-detection.json
 ```
 
 * **SSH Kaba Kuvvet Kuralı:** Tek bir kaynak IP adresinden (`client_ip`) 5 dakika içinde 5 veya daha fazla `Failed password` kaydı geldiğinde alarm üretir.
-* **Web Saldırı Tespiti Kuralı:** URL içinde `../*`, `/etc/passwd`, `union select` gibi şüpheli parametreleri tarar.
+* **Web Saldırı Tespiti Kuralı:** URL içinde `../*`, `/etc/passwd`, `union select` gibi şüpheli parametreleri arar.
 
 ---
 
-### 2. Siber Saldırı Simülasyonunu Çalıştırma
+### Adım 2: Siber Saldırı Simülasyonunu Çalıştırın
 
 Önceden hazırlanan saldırı simülasyon betiğini çalıştırın:
 
@@ -78,32 +85,34 @@ cat rules/web-attack-detection.json
 ./scripts/simulate-attacks.sh
 ```
 
-Bu betik:
-* `198.51.100.77` IP adresinden sırayla `root`, `admin`, `ubuntu`, `deploy`, `test` ve `oracle` kullanıcıları için başarısız SSH oturum denemeleri basar.
-* Canlı Nginx web sunucusuna (`http://localhost:8081`) dizin atlatma (`/../../../../etc/passwd`), gizli dosya (`/.env`, `/.git/config`) ve SQL Injection istekleri gönderir.
+Bu script sırasıyla şunları yapar:
+* `198.51.100.77` IP adresinden sırayla `root`, `admin`, `ubuntu`, `deploy`, `test` ve `oracle` kullanıcıları için başarısız SSH oturum denemeleri gönderir.
+* Canlı Nginx web sunucusuna (`http://localhost:8081`) dizin atlatma (`/../../../../etc/passwd`), gizli dosya (`/.env`, `/.git/config`) ve SQL Injection istekleri basar.
 
 ---
 
-### 3. Kibana Üzerinde Tehdit Avcılığı (Threat Hunting)
+### Adım 3: Kibana Discover ve Güvenlik Ekranında Tehdit Avcılığı Yapın
 
-1. Tarayıcınızdan Kibana'ya bağlanın (`http://<SUNUCU_IP>:15601` veya `https://studentXX-kibana.devopsatolyesi.com`).
-2. **Analytics > Discover** ekranını açın ve zaman aralığını **Last 15 minutes** yapın.
+1. Tarayıcınızdan Kibana'yı açın (`http://<SUNUCU_IP>:15601` veya `https://studentXX-kibana.devopsatolyesi.com`).
+2. **Analytics > Discover** ekranına gidin ve zaman aralığını **Last 15 minutes** yapın.
 
-* **SSH Kaba Kuvvet Analizi (KQL):**
-  * Data View: `system-logs-*`
-  ```text
-  message : "Failed password" and client_ip : "198.51.100.77"
-  ```
+* **SSH Kaba Kuvvet Analizi:**
+  * Veri Görünümü: `system-logs-*`
+  * KQL Sorgusu:
+    ```text
+    message : "Failed password" and client_ip : "198.51.100.77"
+    ```
   *Sol menüden `client_ip`, `user` ve `@timestamp` alanlarını ekleyerek saldırganın hangi hesapları denediğini kronolojik olarak görün.*
 
-* **Web Uygulama Saldırısı Analizi (KQL):**
-  * Data View: `app-logs-*`
-  ```text
-  url : *../* or url : */etc/passwd* or url : *UNION*
-  ```
-  *Gelen kayıtlarda `method`, `url` ve `response_code` alanlarını inceleyin. Web sunucusunun `404` yanıtı verdiğini doğrulayın.*
+* **Web Uygulama Saldırısı Analizi:**
+  * Veri Görünümü: `app-logs-*`
+  * KQL Sorgusu:
+    ```text
+    url : *../* or url : */etc/passwd* or url : *UNION*
+    ```
+  *Saldırganın sistem dosyalarına ve veritabanına erişme denemelerini inceleyin.*
 
-* **Saldırganın Tüm İzlerini Tek Ekranda Birleştirme:**
+* **Saldırganın Tüm İzlerini Tek Ekranda Birleştirme (Korelasyon):**
   ```text
   client_ip : "198.51.100.77"
   ```
@@ -136,7 +145,7 @@ curl -s -u elastic:BilginIT454 "http://localhost:9200/system-logs-*/_search?q=cl
 
 ## Temizlik
 
-Test saldırgan IP adresine (`198.51.100.77`) ait kayıtları indekslerden güvenle temizlemek isterseniz:
+Test saldırgan IP adresine (`198.51.100.77`) ait kayıtları indekslerden temizlemek isterseniz:
 
 ```bash
 curl -s -u elastic:BilginIT454 -X POST "http://localhost:9200/*/_delete_by_query" \
@@ -144,4 +153,5 @@ curl -s -u elastic:BilginIT454 -X POST "http://localhost:9200/*/_delete_by_query
   -d '{"query":{"term":{"client_ip":"198.51.100.77"}}}' | jq '{deleted: .deleted}'
 ```
 
-> **Önemli Not:** Merkezi ELK omurgası (`00-elk-core-stack`), son laboratuvar olan Prodüksiyon İpuçları ve Sorun Giderme için çalışır kalmalıdır.
+> [!WARNING]
+> **Merkezi Omurga Hatırlatması:** `00-elk-core-stack` servislerini (`elasticsearch`, `kibana`) **kesinlikle kapatmayın**. Sonraki Sorun Giderme laboratuvarı bu omurga üzerinde çalışır.

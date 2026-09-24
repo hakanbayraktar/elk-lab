@@ -6,19 +6,25 @@
 
 [LAB-ELK-01.zip](LAB-ELK-01.zip)
 
+> [!IMPORTANT]
+> **DİKKAT: `00-elk-core-stack` AÇIK KALMALIDIR!**
+> Bu laboratuvardaki işlemler merkezi ELK omurgasına bağlanır. `00-elk-core-stack` dizinindeki Elasticsearch, Logstash ve Kibana servislerini **kesinlikle durdurmayın veya silmeyin**. Tüm lablar bu ortak omurga üzerinden çalışır.
+
+---
+
 ## Amaç
-* Linux işletim sisteminin kimlik doğrulama (`/var/log/auth.log`) ve çekirdek/sistem olaylarını (`/var/log/syslog`) Filebeat ajanı ile toplamak.
-* Filebeat'i merkezi Logstash boru hattına (`port 5044`) Beats protokolü üzerinden güvenle bağlamak.
-* Sunucu üzerinde başarısız SSH oturum denemeleri ve yetkisiz erişim simülasyonları gerçekleştirerek gerçek log akışını tetiklemek.
-* Toplanan logların Elasticsearch üzerinde `system-logs-*` indeksine yazıldığını REST API ile doğrulamak.
-* Kibana Discover arayüzünde KQL (Kibana Query Language) ile sistem günlüklerini filtrelemek ve alan bazlı inceleme yapmak.
+* Linux işletim sisteminin kimlik doğrulama (`/var/log/auth.log`) ve sistem olaylarını (`/var/log/syslog`) Filebeat ajanı ile toplamak.
+* Filebeat'i merkezi Logstash boru hattına (`port 5044`) bağlamak.
+* Sunucu üzerinde başarısız SSH oturum denemeleri yaparak gerçek log akışı üretmek.
+* Toplanan logların Elasticsearch üzerinde `system-logs-*` indeksine yazıldığını doğrulamak.
+* Kibana Discover ekranında KQL ile logları aramak ve incelemek.
 
 ---
 
 ## Ön Koşullar
-* **Merkezi ELK Omurgası:** `00-elk-core-stack` servislerinin (`elasticsearch`, `logstash`, `kibana`) çalışır durumda olması gerekmektedir. *(Bu servisler kesinlikle durdurulmamalıdır).*
-* Logstash servisinin Beats portunun açık olduğunu doğrulayın (`nc -zv localhost 5044`).
-* Kimlik Doğrulama Bilgileri: Kullanıcı: `elastic` | Şifre: `BilginIT454`.
+* **Merkezi ELK Omurgası:** `00-elk-core-stack` servislerinin (`elasticsearch`, `logstash`, `kibana`) çalışıyor olması gereklidir.
+* Port Kontrolü: Terminalden `nc -zv localhost 5044` yazarak Logstash Beats portunun açık olduğunu doğrulayın.
+* Giriş Bilgileri: Kullanıcı: `elastic` | Şifre: `BilginIT454` | Port: `15601`.
 
 ---
 
@@ -26,17 +32,16 @@
 
 ```text
 [ Ubuntu Host (/var/log) ]
-├── auth.log (SSH & Sudo Olayları) ──┐
-└── syslog   (Sistem & Kernel)       ▼
+├── auth.log (SSH & Yetkilendirme) ──┐
+└── syslog   (Sistem & Çekirdek)     ▼
                                 [ Filebeat Ajanı ]
-                                (Inputs: log, Output: beats)
                                      │
-                                     ▼ (Port 5044 Beats TCP)
+                                     ▼ (Port 5044 Beats)
                           [ Logstash Boru Hattı ]
-                          - Index: system-logs-YYYY.MM.DD
                                      │
                                      ▼ (Basic Auth: elastic/BilginIT454)
                           [ Elasticsearch (:9200) ]
+                          - İndeks: system-logs-YYYY.MM.DD
                                      ▲
                                      │
                           [ Kibana UI (:15601) ]
@@ -47,25 +52,22 @@
 
 ## Adım Adım Uygulama Rehberi
 
-### 1. Filebeat Yapılandırmasını İnceleme
+### Adım 1: Lab Dizinine Geçin ve Ayarları İnceleyin
 
-`01-linux-system-logs` dizinindeki yapılandırma dosyasını inceleyin:
+Terminalde ilgili dizine geçin ve Filebeat yapılandırmasını görüntüleyin:
 
 ```bash
 cd ~/elk-lab/01-linux-system-logs
 cat filebeat-linux.yml
 ```
 
-Bu yapılandırmada:
-* `/var/log/auth.log` dosyası `log_type: system_auth` etiketiyle toplanır.
-* `/var/log/syslog` dosyası `log_type: system_syslog` etiketiyle toplanır.
-* Çıktı hedefi olarak doğrudan Logstash Beats portu (`localhost:5044`) tanımlıdır.
+*Bu dosyada `/var/log/auth.log` ve `/var/log/syslog` dosyalarının okunup `localhost:5044` portundaki Logstash'e gönderildiği tanımlanmıştır.*
 
 ---
 
-### 2. Filebeat Ajanını Başlatma
+### Adım 2: Filebeat Ajanını Başlatın
 
-Ajanı sisteminize paket kurmadan, host log dizinini salt-okunur (`:ro`) bağlayarak Docker konteyneri ile başlatın:
+Host loglarını bağlayarak Filebeat'i tek komutla Docker üzerinden başlatın:
 
 ```bash
 docker run -d --name filebeat-linux --net=host \
@@ -75,70 +77,65 @@ docker run -d --name filebeat-linux --net=host \
   docker.elastic.co/beats/filebeat:8.17.0 -e -strict.perms=false
 ```
 
-Konteynerin çalıştığını ve Logstash bağlantısını doğrulayın:
+Filebeat'in Logstash'e bağlandığını doğrulamak için loglarına bakın:
 
 ```bash
-docker logs --tail=20 filebeat-linux
+docker logs --tail=15 filebeat-linux
 ```
 
-*Loglarda `Connection to backoff(async(tcp://localhost:5044)) established` çıktısını görün.*
+*Çıktıda `Connection to backoff(async(tcp://localhost:5044)) established` yazısını görüyorsanız bağlantı başarılıdır.*
 
 ---
 
-### 3. Test Güvenlik ve Kimlik Doğrulama Logu Üretme
+### Adım 3: Test Güvenlik ve SSH Logu Üretin
 
-Sistemde SSH oturum hatası ve logger olayları oluşturmak için hazırlanan test scriptini çalıştırın:
+Sistemde SSH oturum hatası ve test mesajları oluşturmak için hazırlanan scripti çalıştırın:
 
 ```bash
 ./scripts/generate-auth-traffic.sh
 ```
 
-Bu script:
-* `127.0.0.1` adresine sahte bir kullanıcı (`nonexistent_user`) ile SSH bağlantısı deneyerek `/var/log/auth.log` içine başarısız oturum kaydı düşürür.
-* `logger` komutu ile `/var/log/syslog` dosyasına güvenlik ve sudo test bildirimleri yazar.
+*Bu script, sisteme sahte bir kullanıcıyla bağlanmaya çalışarak `/var/log/auth.log` içine anında kayıt düşürür.*
 
 ---
 
 ## Doğal Doğrulama ve Beklenen Sonuç
 
-### 1. Elasticsearch REST API ile Sorgulama
+### 1. Elasticsearch API ile Sorgulama
 
-Toplanan logların Elasticsearch'e indekslendiğini terminalden sorgulayın:
+Toplanan logların Elasticsearch'e ulaştığını terminalden test edin:
 
 ```bash
-curl -s -u elastic:BilginIT454 "http://localhost:9200/system-logs-*/_search?q=log_type:system_auth&pretty" | jq '{total_hits: .hits.total.value, sample_message: .hits.hits[0]._source.message}'
+curl -s -u elastic:BilginIT454 "http://localhost:9200/system-logs-*/_search?q=log_type:system_auth&pretty" | jq '{toplam_kayit: .hits.total.value, ornek_mesaj: .hits.hits[0]._source.message}'
 ```
 
-* **Beklenen Sonuç:** `total_hits` değeri 0'dan büyük olmalı ve `sample_message` alanında `Failed password for ... nonexistent_user` veya benzeri kimlik denetim kaydı görüntülenmelidir.
+* **Beklenen Sonuç:** `toplam_kayit` 0'dan büyük olmalı ve `ornek_mesaj` içinde `Failed password` ifadesi görünmelidir.
 
 ---
 
-### 2. Kibana Discover Ekranında Log İnceleme
+### 2. Kibana Discover Ekranında Arama
 
-1. Tarayıcınızdan Kibana paneline bağlanın:
-   * **URL:** `http://<SUNUCU_IP>:15601` veya `https://studentXX-kibana.devopsatolyesi.com`
+1. Tarayıcınızdan Kibana'yı açın:
+   * **Adres:** `http://<SUNUCU_IP>:15601` (veya `https://studentXX-kibana.devopsatolyesi.com`)
    * **Giriş:** `elastic` / `BilginIT454`
-2. Sol menüden **Analytics > Discover** sekmesine gidin.
-3. Sol üstteki Veri Görünümü (Data View) alanından **`Linux Sistem Logs (Auth & Syslog)`** veya kalıp olarak `system-logs-*` seçin. *(Gerekirse Stack Management > Data Views altından `system-logs-*` oluşturabilirsiniz).*
-4. Sağ üstteki zaman seçicisini **Last 15 minutes** olarak ayarlayın.
-5. KQL arama çubuğuna şu filtreleri yazıp **Enter**'a basın:
-   ```text
-   log_type : "system_auth"
-   ```
-   veya sadece SSH hatalarını görmek için:
+2. Sol menüden **Analytics > Discover** seçeneğine tıklayın.
+3. Sol üstteki Veri Görünümünden **`Linux Sistem Logs (Auth & Syslog)`** veya `system-logs-*` seçin.
+4. Sağ üstteki zaman aralığını **Last 15 minutes** yapın.
+5. Arama çubuğuna şunu yazıp Enter'a basın:
    ```text
    message : "Failed password"
    ```
-6. Sol sütundan `host.name`, `log_type` ve `message` alanlarını ekleyerek olay tablonuzu özelleştirin.
+6. Ekranda başarısız SSH denemesinin zamanı, sunucu adı ve mesajı listelenecektir.
 
 ---
 
 ## Temizlik
 
-Bu aşamadaki temizlik yalnızca test amacıyla çalıştırılan Filebeat konteynerini durdurur:
+Yalnızca bu lab için başlattığınız geçici Filebeat konteynerini silin:
 
 ```bash
 docker rm -f filebeat-linux
 ```
 
-> **Önemli Not:** Merkezi ELK omurgası (`00-elk-core-stack`), sonraki tüm laboratuvarlar için çalışır durumda kalmalıdır. `docker compose down` komutunu **çalıştırmayın**.
+> [!WARNING]
+> **Merkezi Omurga Hatırlatması:** `00-elk-core-stack` servislerini (`elasticsearch`, `logstash`, `kibana`) **kesinlikle kapatmayın**. Sonraki tüm laboratuvarlar bu omurga üzerinde çalışır.

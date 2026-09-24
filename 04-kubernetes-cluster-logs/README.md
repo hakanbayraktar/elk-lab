@@ -6,19 +6,26 @@
 
 [LAB-ELK-04.zip](LAB-ELK-04.zip)
 
+> [!IMPORTANT]
+> **DİKKAT: `00-elk-core-stack` AÇIK KALMALIDIR!**
+> Bu laboratuvardaki Kubernetes logları `00-elk-core-stack` içindeki Logstash ve Elasticsearch'e akar. 00 labındaki servisleri **kesinlikle durdurmayın veya silmeyin**.
+> Ayrıca eğitim için önceki günlerden gelen mevcut Kind kümeniz kullanılır; **Kind kümesini kesinlikle silmeyin**.
+
+---
+
 ## Amaç
-* Mevcut Kind Kubernetes kümesindeki tüm podların `stdout` ve `stderr` günlüklerini küme genelinde çalışan bir `Filebeat DaemonSet` ile otomatik olarak toplamak.
-* `add_kubernetes_metadata` işlemcisi sayesinde loglara pod adı, namespace, konteyner adı ve node adı metaverilerini dinamik olarak eklemek.
-* Çok satırlı (multiline) Python/Java hata yığınlarını (`Exception Stack Trace`) `multiline regex` kuralıyla tek bir Elastic olayında birleştirmek.
-* Toplanan Kubernetes loglarını Elasticsearch'te `k8s-logs-*` indeksine yazmak ve REST API ile doğrulamak.
-* Kibana Discover üzerinde `kubernetes.pod.name` ve `kubernetes.namespace` alanlarıyla KQL sorguları yürütmek.
+* Mevcut Kind Kubernetes kümesindeki tüm podların loglarını küme genelinde çalışan bir `Filebeat DaemonSet` ile otomatik toplamak.
+* `add_kubernetes_metadata` işlemcisi ile loglara pod adı, namespace ve node adı bilgilerini dinamik olarak eklemek.
+* Çok satırlı (multiline) Python/Java hata yığınlarını (`Exception Stack Trace`) `multiline regex` kuralıyla tek bir olayda birleştirmek.
+* Toplanan Kubernetes loglarını Elasticsearch üzerinde `k8s-logs-*` indeksine yazmak ve doğrulamak.
+* Kibana Discover üzerinde pod bazlı KQL sorguları yürütmek.
 
 ---
 
 ## Ön Koşullar
-* **Merkezi ELK Omurgası:** `00-elk-core-stack` servislerinin (`elasticsearch`, `logstash`, `kibana`) çalışır durumda olması gerekmektedir. *(Bu servisler kapatılmaz).*
-* **Mevcut Kind Kümesi:** Önceki eğitim modüllerinde kurulan mevcut Kind Kubernetes kümesi (`kubectl get nodes` çıktısı `Ready` olmalıdır). **Yeni bir küme kurulmaz; mevcut küme silinmez.**
-* Kimlik Doğrulama: Kullanıcı: `elastic` | Şifre: `BilginIT454`.
+* **Merkezi ELK Omurgası:** `00-elk-core-stack` servislerinin (`elasticsearch`, `logstash`, `kibana`) çalışıyor olması gereklidir.
+* **Mevcut Kind Kümesi:** `kubectl get nodes` çıktısının `Ready` olduğunu doğrulayın. *(Yeni küme kurulmaz).*
+* Giriş Bilgileri: Kullanıcı: `elastic` | Şifre: `BilginIT454` | Port: `15601`.
 
 ---
 
@@ -37,13 +44,13 @@
 |         └──────────────────┬──────────────────┘               |
 |                            ▼                                  |
 |               [ Filebeat DaemonSet (Node) ]                   |
-|               - multiline regex: Stack trace birleştirme      |
+|               - multiline regex: Hata birleştirme             |
 |               - add_kubernetes_metadata (K8s API)             |
 +────────────────────────────┼──────────────────────────────────+
-                             │ (Host Ağından Port 5044 Beats)
+                             │ (Host Ağ Portu: 5044 Beats)
                              ▼
-              [ Logstash Pipeline (:5044) ]
-              - Index: k8s-logs-YYYY.MM.DD
+              [ Logstash Boru Hattı (:5044) ]
+              - İndeks: k8s-logs-YYYY.MM.DD
                              │
                              ▼ (Basic Auth: elastic/BilginIT454)
               [ Elasticsearch (:9200) ] ──► [ Kibana UI (:15601) ]
@@ -53,67 +60,55 @@
 
 ## Adım Adım Uygulama Rehberi
 
-### 1. Filebeat DaemonSet ve RBAC Kurulumu
+### Adım 1: Lab Dizinine Geçin ve DaemonSet'i Kurun
 
-Filebeat'in Kubernetes API'sinden pod bilgilerini okuyabilmesi için gerekli RBAC izinlerini ve DaemonSet podunu oluşturun:
+İlgili dizine geçerek Filebeat'in küme seviyesinde çalışması için gerekli RBAC izinlerini ve DaemonSet podunu oluşturun:
 
 ```bash
 cd ~/elk-lab/04-kubernetes-cluster-logs
 kubectl apply -f filebeat-kubernetes-daemonset.yaml
 ```
 
-DaemonSet podlarının çalıştığını doğrulayın:
+DaemonSet podlarının çalıştığını kontrol edin:
 
 ```bash
 kubectl get pods -n logging -l app=filebeat -o wide
 ```
 
-Pod loglarını inceleyerek Logstash bağlantısının kurulduğunu teyit edin:
+Pod loglarını izleyerek Logstash bağlantısını teyit edin:
 
 ```bash
-kubectl logs -n logging -l app=filebeat --tail=25
+kubectl logs -n logging -l app=filebeat --tail=20
 ```
 
-*`Connection to backoff(async(tcp://...:5044)) established` mesajını görün.*
+*`Connection to backoff(async(tcp://...:5044)) established` çıktısını görün.*
 
 ---
 
-### 2. Çok Satırlı (Multiline) Hata Üreten Test Uygulamasını Dağıtma
+### Adım 2: Çok Satırlı Hata Üreten Test Uygulamasını Dağıtın
 
-Hem normal sipariş logları hem de çok satırlı Python `ZeroDivisionError` hata yığını basan örnek uygulamayı kümede çalıştırın:
+Hem normal sipariş logları hem de Python `ZeroDivisionError` hata yığını basan örnek uygulamayı başlatın:
 
 ```bash
 kubectl apply -f multiline-app-deployment.yaml
 kubectl get deployment payment-service-demo
 ```
 
-Uygulamanın loglarını doğrudan kubectl ile izleyin:
+Uygulamanın ürettiği logları doğrudan terminalden izleyin:
 
 ```bash
 kubectl logs -l app=payment-service --tail=15
 ```
 
-*Python `Traceback (most recent call last):` hata bloklarının ekrana basıldığını göreceksiniz.*
+*Python `Traceback (most recent call last):` hata bloklarını göreceksiniz.*
 
 ---
 
-### 3. Filebeat Çok Satır (Multiline) Birleştirme Mantığı
+### Adım 3: Filebeat Hata Yığınlarını Nasıl Birleştirir?
 
-`filebeat-kubernetes-daemonset.yaml` içinde tanımlanan kural:
-
-```yaml
-parsers:
-  - container:
-      stream: all
-      format: auto
-  - multiline:
-      type: pattern
-      pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}|^\\[[0-9]{4}-[0-9]{2}-[0-9]{2}'
-      negate: true
-      match: after
-```
-
-* **Açıklama:** Standart bir tarih damgasıyla (`YYYY-MM-DD` veya `[YYYY-MM-DD`) başlamayan her yeni satır (örneğin `Traceback`, `File ...`, `ZeroDivisionError`), önceki satırın bir devamı kabul edilir ve Elasticsearch tarafında **tek bir log kaydında** toplanır.
+`filebeat-kubernetes-daemonset.yaml` içindeki kural:
+* Standart tarih damgasıyla (`YYYY-MM-DD`) başlamayan satırları (örneğin `Traceback`, `ZeroDivisionError`) önceki log satırının devamı kabul eder.
+* Böylece 10 satırlık hata yığını Elasticsearch'e **10 ayrı log yerine tek bir bütün olay** olarak kaydedilir.
 
 ---
 
@@ -121,7 +116,7 @@ parsers:
 
 ### 1. Elasticsearch API ile Kubernetes Metaverisini Doğrulama
 
-Toplanan logların Kubernetes pod bilgileriyle zenginleştirildiğini REST API ile sorgulayın:
+Toplanan logların Kubernetes pod bilgileriyle birlikte kaydedildiğini REST API ile sorgulayın:
 
 ```bash
 curl -s -u elastic:BilginIT454 "http://localhost:9200/k8s-logs-*/_search?q=kubernetes.pod.name:payment-service*&pretty" | jq '.hits.hits[0]._source.kubernetes'
@@ -144,24 +139,25 @@ curl -s -u elastic:BilginIT454 "http://localhost:9200/k8s-logs-*/_search?q=kuber
 
 ### 2. Kibana Discover Ekranında Çok Satırlı Hata Analizi
 
-1. Tarayıcınızdan Kibana'ya bağlanın (`http://<SUNUCU_IP>:15601` veya `https://studentXX-kibana.devopsatolyesi.com`).
+1. Tarayıcınızdan Kibana'yı açın (`http://<SUNUCU_IP>:15601` veya `https://studentXX-kibana.devopsatolyesi.com`).
 2. **Analytics > Discover** bölümüne gidin.
-3. Veri Görünümü olarak **`Kubernetes Pod & Cluster Logs`** (`k8s-logs-*`) seçin.
-4. KQL arama çubuğuna şu filtreyi girin:
+3. Veri Görünümünden **`Kubernetes Pod & Cluster Logs`** (`k8s-logs-*`) seçin.
+4. KQL arama çubuğuna şunu yazın:
    ```text
    kubernetes.pod.name : "payment-service*" and message : "Traceback"
    ```
-5. Sonuç listesindeki herhangi bir hata kaydını açın. `message` alanında tüm Python hata yığınının bölünmeden, tek bir blok halinde okunduğunu doğrulayın.
+5. Sonuç listesindeki kaydı açın; tüm Python hata yığınının bölünmeden, tek parça halinde görüntülendiğini doğrulayın.
 
 ---
 
 ## Temizlik
 
-Kubernetes kaynaklarını serbest bırakmak için yalnızca bu modülde oluşturulan DaemonSet ve test podunu silin:
+Yalnızca bu lab için başlattığınız DaemonSet ve test podunu silin:
 
 ```bash
 kubectl delete -f multiline-app-deployment.yaml
 kubectl delete -f filebeat-kubernetes-daemonset.yaml
 ```
 
-> **Önemli Not:** Kind Kubernetes kümenizi silmeyin. Merkezi ELK omurgası (`00-elk-core-stack`), sonraki Kibana ve SIEM laboratuvarları için açık kalmalıdır.
+> [!WARNING]
+> **Merkezi Omurga ve Küme Hatırlatması:** Kind Kubernetes kümenizi ve `00-elk-core-stack` servislerini **kesinlikle kapatmayın veya silmeyin**. Sonraki tüm laboratuvarlar bu omurga üzerinde çalışır.
