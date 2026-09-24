@@ -236,12 +236,40 @@ ${AUTH_CURL} -X POST "${ES_URL}/_bulk" \
 " > /dev/null
 echo "    [✓] Kubernetes pod kayıtları '${K8S_INDEX}' indeksine yazıldı."
 
+# 4.5 Filebeat Altyapı ve Ajan Loglarını Toplama & İndeksleme (filebeat-*)
+echo "[+] 4.5 Filebeat altyapı ve toplayıcı logları hazırlanıyor..."
+FILEBEAT_INDEX="filebeat-${TODAY}"
+FILEBEAT_BULK=$(cat <<EOF
+{"index":{"_index":"${FILEBEAT_INDEX}"}}
+{"@timestamp":"${T_0}","agent":{"name":"${HOSTNAME}","type":"filebeat","version":"8.17.0"},"log":{"file":{"path":"/var/log/auth.log"},"offset":4096},"input":{"type":"filestream"},"host":{"name":"${HOSTNAME}"},"message":"Harvester started for file: /var/log/auth.log","level":"INFO"}
+{"index":{"_index":"${FILEBEAT_INDEX}"}}
+{"@timestamp":"${T_2}","agent":{"name":"${HOSTNAME}","type":"filebeat","version":"8.17.0"},"log":{"file":{"path":"/var/lib/docker/containers/c124/c124-json.log"},"offset":8192},"input":{"type":"container"},"host":{"name":"${HOSTNAME}"},"message":"Harvester started for file: /var/lib/docker/containers/c124/c124-json.log","level":"INFO"}
+{"index":{"_index":"${FILEBEAT_INDEX}"}}
+{"@timestamp":"${T_4}","agent":{"name":"${HOSTNAME}","type":"filebeat","version":"8.17.0"},"log":{"file":{"path":"/var/log/pods/default_payment-service/payment-worker/0.log"},"offset":12288},"input":{"type":"container"},"host":{"name":"${HOSTNAME}"},"message":"Kubernetes pod metadata attached for payment-service","level":"INFO"}
+{"index":{"_index":"${FILEBEAT_INDEX}"}}
+{"@timestamp":"${T_7}","agent":{"name":"${HOSTNAME}","type":"filebeat","version":"8.17.0"},"host":{"name":"${HOSTNAME}"},"message":"Connecting to backoff(async(tcp://localhost:5044)) established","level":"INFO"}
+{"index":{"_index":"${FILEBEAT_INDEX}"}}
+{"@timestamp":"${T_10}","agent":{"name":"${HOSTNAME}","type":"filebeat","version":"8.17.0"},"host":{"name":"${HOSTNAME}"},"message":"Non-zero metrics in the last 30s: libbeat.output.events.acked=185 libbeat.pipeline.events.published=185","level":"INFO"}
+{"index":{"_index":"${FILEBEAT_INDEX}"}}
+{"@timestamp":"${T_13}","agent":{"name":"${HOSTNAME}","type":"filebeat","version":"8.17.0"},"host":{"name":"${HOSTNAME}"},"message":"Registry checkpoint updated. 268 events successfully acknowledged by Logstash","level":"INFO"}
+{"index":{"_index":"${FILEBEAT_INDEX}"}}
+{"@timestamp":"${T_30}","agent":{"name":"${HOSTNAME}","type":"filebeat","version":"8.17.0"},"host":{"name":"${HOSTNAME}"},"message":"Filebeat started and running clean. Configuration reloaded.","level":"INFO"}
+EOF
+)
+
+${AUTH_CURL} -X POST "${ES_URL}/_bulk" \
+  -H "Content-Type: application/x-ndjson" \
+  --data-binary "${FILEBEAT_BULK}
+" > /dev/null
+echo "    [✓] Filebeat altyapı logları '${FILEBEAT_INDEX}' indeksine yazıldı."
+
 # 5. Kibana Data Views (İndeks Kalıpları) Oluşturma
 echo "[+] 5. Kibana Data Views (İndeks Kalıpları) tanımlanıyor..."
 for view in \
   '{"data_view":{"id":"linux-system-view","title":"linux-system-*","name":"Linux Sistem & Metrikler","timeFieldName":"@timestamp"},"override":true}' \
   '{"data_view":{"id":"docker-container-view","title":"docker-container-*","name":"Docker Konteyner Durumları","timeFieldName":"@timestamp"},"override":true}' \
   '{"data_view":{"id":"kubernetes-cluster-view","title":"kubernetes-cluster-*","name":"Kubernetes Pod & Küme Kayıtları","timeFieldName":"@timestamp"},"override":true}' \
+  '{"data_view":{"id":"filebeat-view","title":"filebeat-*","name":"Filebeat Altyapı (Docker & K8s)","timeFieldName":"@timestamp"},"override":true}' \
   '{"data_view":{"id":"logstash-general-view","title":"logstash-*","name":"Logstash Genel Akış","timeFieldName":"@timestamp"},"override":true}'; do
 
   ${KBN_CURL} -X POST "${KIBANA_URL}/api/data_views/data_view" -d "${view}" > /dev/null 2>&1 || true
@@ -249,7 +277,7 @@ done
 
 # Varsayılan data view'ı ayarla
 ${KBN_CURL} -X POST "${KIBANA_URL}/api/data_views/default" -d '{"value":"linux-system-view"}' > /dev/null 2>&1 || true
-echo "    [✓] 4 adet Kibana Data View oluşturuldu ve 'linux-system-view' varsayılan yapıldı."
+echo "    [✓] 5 adet Kibana Data View oluşturuldu ve 'linux-system-view' varsayılan yapıldı."
 
 # 6. Kibana Lens Görselleştirmeleri ve Kayıtlı Aramaları Oluşturma
 echo "[+] 6. Kibana Lens grafikleri ve canlı arama panelleri hazırlanıyor..."

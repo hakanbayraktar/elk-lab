@@ -286,4 +286,41 @@ for i in range(1500):
         cicd_bulk = []
 send_bulk(cicd_bulk)
 
+# -------------------------------------------------------------
+# 5. Generate Filebeat Infrastructure Logs (filebeat-*)
+# -------------------------------------------------------------
+print("[+] Generating 1,000 Filebeat Infrastructure & Harvester Logs...")
+filebeat_paths = [
+    "/var/log/auth.log",
+    "/var/log/syslog",
+    "/var/lib/docker/containers/demo-nginx/demo-nginx.log",
+    "/var/lib/docker/containers/demo-api/demo-api.log",
+    "/var/log/pods/default_payment-service/payment-worker/0.log",
+    "/var/log/pods/kube-system_coredns/coredns/0.log"
+]
+filebeat_bulk = []
+
+for i in range(1000):
+    mins_ago = random.randint(0, 1440)
+    ts = (now - timedelta(minutes=mins_ago, seconds=random.randint(0, 59))).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    p = random.choice(filebeat_paths)
+    inp = "container" if "containers" in p or "pods" in p else "filestream"
+    
+    doc = {
+        "@timestamp": ts,
+        "agent": {"name": "student-vm", "type": "filebeat", "version": "8.17.0"},
+        "log": {"file": {"path": p}, "offset": random.randint(1024, 1048576)},
+        "input": {"type": inp},
+        "host": {"name": "student-vm"},
+        "level": "INFO",
+        "message": f"Harvester processed batch of {random.randint(5, 50)} lines from {p}",
+        "log_type": "filebeat"
+    }
+    filebeat_bulk.append(json.dumps({"index": {"_index": f"filebeat-{now.strftime('%Y.%m.%d')}"}}))
+    filebeat_bulk.append(json.dumps(doc))
+    if len(filebeat_bulk) >= 1000:
+        send_bulk(filebeat_bulk)
+        filebeat_bulk = []
+send_bulk(filebeat_bulk)
+
 print("[✓] All sample DevOps datasets generated and indexed successfully!")
