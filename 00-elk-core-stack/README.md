@@ -161,6 +161,8 @@ Bu script sırasıyla şunları gerçekleştirir:
 * Çalışan Docker konteynerlarını okuyup `docker-container-YYYY.MM.DD` indeksine aktarır.
 * Kubernetes pod durumlarını `kubernetes-cluster-YYYY.MM.DD` indeksine yazar.
 * Kibana üzerinde 4 adet Data View (`linux-system-*`, `docker-container-*`, `kubernetes-cluster-*`, `logstash-*`) tanımlar.
+* 3 adet hazır Lens görselleştirmesi (Docker dağılımı, Kubernetes pod durumları, Linux servis olay trendi) ve canlı arama paneli oluşturur.
+* Bu bileşenleri içeren **ELK Core — Altyapı ve Sistem Genel Bakış Panosu**'nu (`core-infrastructure-overview`) otomatik olarak kullanıma hazır hale getirir.
 
 ---
 
