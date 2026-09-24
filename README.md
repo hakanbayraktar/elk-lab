@@ -93,9 +93,10 @@ Tüm ELK omurgasını, canlı mikroservisleri, 40.000+ örnek log verisini, 8 fa
 ```
 
 Kurulum tamamlandığında Kibana arayüzüne tarayıcınızdan erişebilirsiniz:
+* **Doğrudan IP Erişimi:** `http://<UBUNTU_IP>:15601` (veya `http://localhost:15601`)
+* **Giriş Bilgileri:** Kullanıcı Adı: `elastic` | Şifre: `BilginIT454`
 * **Kurumsal HTTPS Portalı:** `https://studentXX-kibana.devopsatolyesi.com`
-* **Doğrudan IP Erişimi:** `http://<UBUNTU_IP>:15601` (veya `http://localhost:5601`)
-* **Kibana Dashboard Merkezi:** [http://localhost:5601/app/dashboards](http://localhost:5601/app/dashboards)
+* **Kibana Dashboard Merkezi:** [http://localhost:15601/app/dashboards](http://localhost:15601/app/dashboards)
 
 Laboratuvarı tamamen kapatıp kaynakları serbest bırakmak için:
 ```bash
@@ -130,7 +131,7 @@ Laboratuvarı tamamen kapatıp kaynakları serbest bırakmak için:
   docker compose -f 00-elk-core-stack/docker-compose.yml ps
 
   # Elasticsearch küme sağlığı
-  curl -s http://localhost:9200/_cluster/health?pretty
+  curl -s -u elastic:BilginIT454 http://localhost:9200/_cluster/health?pretty
   ```
 
 #### 4. Canlı Örnek Mikroservisleri Başlatma
@@ -167,10 +168,11 @@ Laboratuvarı tamamen kapatıp kaynakları serbest bırakmak için:
 
 #### 8. Canlı Doğrulama ve Arayüzü Açma
 * **Tarayıcıda Açın:**
+  * **Doğrudan IP:** `http://<UBUNTU_IP>:15601` (veya `http://localhost:15601`)
+  * **Giriş Bilgileri:** `elastic` / `BilginIT454`
   * **Kurumsal HTTPS Portalı:** `https://studentXX-kibana.devopsatolyesi.com`
-  * **Doğrudan IP:** `http://<UBUNTU_IP>:15601` (veya `http://localhost:5601`)
-  * **Dashboard Merkezi:** [http://localhost:5601/app/dashboards](http://localhost:5601/app/dashboards)
-  * **Discover (Canlı Log Akışı):** [http://localhost:5601/app/discover](http://localhost:5601/app/discover)
+  * **Dashboard Merkezi:** [http://localhost:15601/app/dashboards](http://localhost:15601/app/dashboards)
+  * **Discover (Canlı Log Akışı):** [http://localhost:15601/app/discover](http://localhost:15601/app/discover)
 
 ---
 

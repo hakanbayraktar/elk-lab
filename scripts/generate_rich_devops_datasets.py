@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
+import base64
 import json
+import os
 import random
 import time
 import urllib.request
 from datetime import datetime, timezone, timedelta
 
-ES_URL = "http://localhost:9200"
+ES_URL = os.getenv("ES_URL", "http://localhost:9200")
+ES_USER = os.getenv("ES_USER", "elastic")
+ES_PASSWORD = os.getenv("ES_PASSWORD", "BilginIT454")
+auth_token = base64.b64encode(f"{ES_USER}:{ES_PASSWORD}".encode("utf-8")).decode("utf-8")
 
 print("[+] Starting high-volume DevOps sample data generation...")
 
@@ -18,7 +23,10 @@ def send_bulk(bulk_lines):
     req = urllib.request.Request(
         f"{ES_URL}/_bulk",
         data=data.encode("utf-8"),
-        headers={"Content-Type": "application/x-ndjson"}
+        headers={
+            "Content-Type": "application/x-ndjson",
+            "Authorization": f"Basic {auth_token}"
+        }
     )
     with urllib.request.urlopen(req) as resp:
         res = json.loads(resp.read().decode())

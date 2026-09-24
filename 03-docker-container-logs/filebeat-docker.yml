@@ -11,6 +11,8 @@ processors:
 
 output.elasticsearch:
   hosts: ["http://localhost:9200"]
+  username: "elastic"
+  password: "BilginIT454"
   index: "docker-containers-%{+YYYY.MM.dd}"
 
 # Alternatif: Logstash üzerinden iletim için:

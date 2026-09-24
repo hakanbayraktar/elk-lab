@@ -1,22 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-KIBANA_URL="${KIBANA_URL:-http://localhost:5601}"
+KIBANA_PORT="${KIBANA_PORT:-15601}"
+KIBANA_URL="${KIBANA_URL:-http://localhost:${KIBANA_PORT}}"
+KIBANA_USER="${KIBANA_USER:-elastic}"
+KIBANA_PASSWORD="${KIBANA_PASSWORD:-BilginIT454}"
+KBN_CURL="curl -s -u ${KIBANA_USER}:${KIBANA_PASSWORD}"
 
 echo "[+] Checking Kibana status at ${KIBANA_URL}..."
-until curl -s "${KIBANA_URL}/api/status" | grep -q '"level":"available"'; do
+until ${KBN_CURL} "${KIBANA_URL}/api/status" | grep -q '"level":"available"'; do
   echo "    Waiting for Kibana to be ready..."
   sleep 3
 done
 echo "[✓] Kibana is available."
 
 echo "[+] 1. Checking and Installing Official Sample Datasets (Logs, Ecommerce, Flights)..."
-SAMPLE_JSON=$(curl -s --max-time 15 -X GET "${KIBANA_URL}/api/sample_data" -H 'kbn-xsrf: true' || echo "[]")
+SAMPLE_JSON=$(${KBN_CURL} --max-time 15 -X GET "${KIBANA_URL}/api/sample_data" -H 'kbn-xsrf: true' || echo "[]")
 for sample in logs ecommerce flights; do
   STATUS=$(echo "${SAMPLE_JSON}" | jq -r ".[] | select(.id == \"${sample}\") | .status" 2>/dev/null || echo "")
   if [ "${STATUS}" != "installed" ]; then
     echo "    Installing sample dataset: ${sample}..."
-    curl -s --max-time 60 -X POST "${KIBANA_URL}/api/sample_data/${sample}" -H 'kbn-xsrf: true' > /dev/null 2>&1 || true
+    ${KBN_CURL} --max-time 60 -X POST "${KIBANA_URL}/api/sample_data/${sample}" -H 'kbn-xsrf: true' > /dev/null 2>&1 || true
   else
     echo "    Sample dataset '${sample}' is already installed."
   fi
@@ -30,7 +34,7 @@ for view in \
   '{"data_view":{"id":"cicd-logs-view","title":"cicd-logs-*","name":"CI/CD Pipelines (Jenkins & GitLab)","timeFieldName":"@timestamp"}}' \
   '{"data_view":{"id":"filebeat-view","title":"filebeat-*","name":"Filebeat Infrastructure (Docker & K8s)","timeFieldName":"@timestamp"}}'; do
 
-  curl -s -X POST "${KIBANA_URL}/api/data_views/data_view" \
+  ${KBN_CURL} -X POST "${KIBANA_URL}/api/data_views/data_view" \
     -H 'kbn-xsrf: true' \
     -H 'Content-Type: application/json' \
     -d "${view}" > /dev/null 2>&1 || true
@@ -38,7 +42,7 @@ done
 
 echo "[+] 3. Creating Native Lens Visualizations for Application Logs..."
 # 3.1 HTTP Status Codes Over Time
-curl -s -X POST "${KIBANA_URL}/api/saved_objects/lens/http-status-codes-lens?overwrite=true" \
+${KBN_CURL} -X POST "${KIBANA_URL}/api/saved_objects/lens/http-status-codes-lens?overwrite=true" \
   -H 'kbn-xsrf: true' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -93,7 +97,7 @@ curl -s -X POST "${KIBANA_URL}/api/saved_objects/lens/http-status-codes-lens?ove
   }' > /dev/null 2>&1 || true
 
 # 3.2 Top Requested URLs
-curl -s -X POST "${KIBANA_URL}/api/saved_objects/lens/top-urls-lens?overwrite=true" \
+${KBN_CURL} -X POST "${KIBANA_URL}/api/saved_objects/lens/top-urls-lens?overwrite=true" \
   -H 'kbn-xsrf: true' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -146,7 +150,7 @@ curl -s -X POST "${KIBANA_URL}/api/saved_objects/lens/top-urls-lens?overwrite=tr
   }' > /dev/null 2>&1 || true
 
 # 3.3 Top Attacker IPs
-curl -s -X POST "${KIBANA_URL}/api/saved_objects/lens/top-attackers-lens?overwrite=true" \
+${KBN_CURL} -X POST "${KIBANA_URL}/api/saved_objects/lens/top-attackers-lens?overwrite=true" \
   -H 'kbn-xsrf: true' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -199,7 +203,7 @@ curl -s -X POST "${KIBANA_URL}/api/saved_objects/lens/top-attackers-lens?overwri
   }' > /dev/null 2>&1 || true
 
 echo "[+] 4. Creating Unified DevOps Observability & Security Dashboard..."
-curl -s -X POST "${KIBANA_URL}/api/saved_objects/dashboard/devops-ops-overview?overwrite=true" \
+${KBN_CURL} -X POST "${KIBANA_URL}/api/saved_objects/dashboard/devops-ops-overview?overwrite=true" \
   -H 'kbn-xsrf: true' \
   -H 'Content-Type: application/json' \
   -d '{

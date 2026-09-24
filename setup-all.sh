@@ -2,8 +2,25 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ES_URL="${ES_URL:-http://localhost:9200}"
-KIBANA_URL="${KIBANA_URL:-http://localhost:5601}"
+
+# Load .env if present
+if [ -f "${SCRIPT_DIR}/.env" ]; then
+  set -a
+  source "${SCRIPT_DIR}/.env"
+  set +a
+elif [ -f "${SCRIPT_DIR}/00-elk-core-stack/.env" ]; then
+  set -a
+  source "${SCRIPT_DIR}/00-elk-core-stack/.env"
+  set +a
+fi
+
+export ES_URL="${ES_URL:-http://localhost:9200}"
+export ES_USER="${ELASTIC_USERNAME:-elastic}"
+export ES_PASSWORD="${ELASTIC_PASSWORD:-BilginIT454}"
+export KIBANA_PORT="${KIBANA_PORT:-15601}"
+export KIBANA_URL="${KIBANA_URL:-http://localhost:${KIBANA_PORT}}"
+export KIBANA_USER="${ELASTIC_USERNAME:-elastic}"
+export KIBANA_PASSWORD="${ELASTIC_PASSWORD:-BilginIT454}"
 
 echo "=================================================================="
 echo "    🚀 Elastic Stack (ELK 8.x) Full Lab Automated Bootstrap       "
@@ -23,7 +40,7 @@ fi
 
 # 2. Start Core ELK Stack
 echo "[+] 2. Starting Core ELK Stack (Elasticsearch, Logstash, Kibana)..."
-docker compose -f "${SCRIPT_DIR}/00-elk-core-stack/docker-compose.yml" up -d
+docker compose -f "${SCRIPT_DIR}/00-elk-core-stack/docker-compose.yml" --env-file "${SCRIPT_DIR}/00-elk-core-stack/.env" up -d
 
 # 3. Start Demo Microservice Apps
 echo "[+] 3. Starting Demo Microservices (Nginx :8081 & Node API :3001)..."
@@ -31,14 +48,14 @@ docker compose -f "${SCRIPT_DIR}/02-workspace-apps-logging/sample-apps/docker-co
 
 # 4. Wait for Elasticsearch & Kibana Health
 echo "[+] 4. Waiting for Elasticsearch & Kibana to become available..."
-until curl -s "${ES_URL}/_cluster/health" | grep -q '"status"'; do
+until curl -s -u "${ES_USER}:${ES_PASSWORD}" "${ES_URL}/_cluster/health" | grep -q '"status"'; do
   echo "    Waiting for Elasticsearch (:9200)..."
   sleep 3
 done
 echo "    [✓] Elasticsearch is healthy."
 
-until curl -s "${KIBANA_URL}/api/status" | grep -q '"level":"available"'; do
-  echo "    Waiting for Kibana (:5601)..."
+until curl -s -u "${KIBANA_USER}:${KIBANA_PASSWORD}" "${KIBANA_URL}/api/status" | grep -q '"level":"available"'; do
+  echo "    Waiting for Kibana (:15601 / :5601)..."
   sleep 4
 done
 echo "    [✓] Kibana is available."

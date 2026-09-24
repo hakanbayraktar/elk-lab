@@ -1,14 +1,24 @@
 #!/usr/bin/env python3
+import base64
 import json
+import os
 import urllib.request
 
-KIBANA_URL = "http://localhost:5601"
+KIBANA_PORT = os.getenv("KIBANA_PORT", "15601")
+KIBANA_URL = os.getenv("KIBANA_URL", f"http://localhost:{KIBANA_PORT}")
+KIBANA_USER = os.getenv("KIBANA_USER", os.getenv("ELASTIC_USERNAME", "elastic"))
+KIBANA_PASSWORD = os.getenv("KIBANA_PASSWORD", os.getenv("ELASTIC_PASSWORD", "BilginIT454"))
+auth_token = base64.b64encode(f"{KIBANA_USER}:{KIBANA_PASSWORD}".encode("utf-8")).decode("utf-8")
 
 def api_post(endpoint, data):
     req = urllib.request.Request(
         f"{KIBANA_URL}{endpoint}",
         data=json.dumps(data).encode("utf-8"),
-        headers={"kbn-xsrf": "true", "Content-Type": "application/json"},
+        headers={
+            "kbn-xsrf": "true",
+            "Content-Type": "application/json",
+            "Authorization": f"Basic {auth_token}"
+        },
         method="POST"
     )
     with urllib.request.urlopen(req) as resp:
