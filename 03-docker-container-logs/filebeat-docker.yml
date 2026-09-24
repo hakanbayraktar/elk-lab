@@ -9,6 +9,10 @@ filebeat.inputs:
 processors:
   - add_host_metadata: ~
 
+setup.ilm.enabled: false
+setup.template.name: "docker-containers"
+setup.template.pattern: "docker-containers-*"
+
 output.elasticsearch:
   hosts: ["http://localhost:9200"]
   username: "elastic"

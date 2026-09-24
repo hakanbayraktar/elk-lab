@@ -1,114 +1,105 @@
 # LAB-ELK-04 — Kubernetes Cluster ve Pod Loglarının Toplanması
 
 | Seviye | Profil / Araçlar | Açık Portlar |
-| :--- | :--- | :--- |
-| Orta (Intermediate) | Kubernetes (Kind/Minikube/K8s), Filebeat DaemonSet, Kibana | 15601 / 5601 (Kibana), 5044 (Logstash) |
+|:---:|:---:|:---:|
+| Orta | Kubernetes (Kind/K8s), Filebeat DaemonSet, Kibana | 9200 (ES), 15601 (Kibana), 5044 (Logstash Beats) |
 
----
+[LAB-ELK-04.zip](LAB-ELK-04.zip)
 
 ## Amaç
-
-- Kubernetes podlarının standart çıktı (`stdout`/`stderr`) akışlarını `Filebeat DaemonSet` ile küme seviyesinde otomatik olarak toplamak.
-- `add_kubernetes_metadata` işlemcisi ile loglara pod adı, namespace, container adı, node adı ve etiket (label) bilgilerini otomatik olarak eklemek.
-- Çok satırlı (multiline) hata yığınlarını (Python/Java stack traces) tek bir log olayında birleştirmek (`multiline regex`).
-- Kibana Discover üzerinde pod bazlı filtreleme (`kubernetes.pod.name`, `kubernetes.namespace`) ve KQL sorguları gerçekleştirmek.
+* Mevcut Kind Kubernetes kümesindeki tüm podların `stdout` ve `stderr` günlüklerini küme genelinde çalışan bir `Filebeat DaemonSet` ile otomatik olarak toplamak.
+* `add_kubernetes_metadata` işlemcisi sayesinde loglara pod adı, namespace, konteyner adı ve node adı metaverilerini dinamik olarak eklemek.
+* Çok satırlı (multiline) Python/Java hata yığınlarını (`Exception Stack Trace`) `multiline regex` kuralıyla tek bir Elastic olayında birleştirmek.
+* Toplanan Kubernetes loglarını Elasticsearch'te `k8s-logs-*` indeksine yazmak ve REST API ile doğrulamak.
+* Kibana Discover üzerinde `kubernetes.pod.name` ve `kubernetes.namespace` alanlarıyla KQL sorguları yürütmek.
 
 ---
 
-## Ön Koşullar ve Bağımlılıklar
-
-- **Merkezi Omurga:** `00-elk-core-stack` modülündeki Elasticsearch, Logstash ve Kibana servislerinin çalışıyor olması gerekmektedir.
-- **Mevcut Kind Kümesi:** Önceki günlerden gelen mevcut Kind Kubernetes kümesi (`kubectl get nodes` çıktısının Ready dönmesi). Yeni bir küme kurulmaz; mevcut küme kesinlikle **silinmemelidir**.
-- Küme içinden host üzerindeki Logstash portuna (`5044`) erişim (Kind için standart bridge gateway IP'si: `172.17.0.1` veya host IP).
+## Ön Koşullar
+* **Merkezi ELK Omurgası:** `00-elk-core-stack` servislerinin (`elasticsearch`, `logstash`, `kibana`) çalışır durumda olması gerekmektedir. *(Bu servisler kapatılmaz).*
+* **Mevcut Kind Kümesi:** Önceki eğitim modüllerinde kurulan mevcut Kind Kubernetes kümesi (`kubectl get nodes` çıktısı `Ready` olmalıdır). **Yeni bir küme kurulmaz; mevcut küme silinmez.**
+* Kimlik Doğrulama: Kullanıcı: `elastic` | Şifre: `BilginIT454`.
 
 ---
 
 ## Mimari ve Çalışma Modeli
 
 ```text
-+-------------------------------------------------------------------------------+
-| Kubernetes Cluster (Kind / Minikube / K3s)                                    |
-|                                                                               |
-|  [payment-service Pod]              [other-app Pod]                           |
-|         │ (stdout/stderr)                  │                                  |
-|         ▼                                  ▼                                  |
-|  /var/log/pods/...                  /var/log/pods/...                         |
-|  /var/log/containers/*.log          /var/log/containers/*.log                 |
-|         │                                  │                                  |
-|         +──────────────────┬───────────────+                                  |
-|                            ▼                                                  |
-|               [Filebeat DaemonSet (Node)]                                     |
-|                 - CRI log parser                                              |
-|                 - multiline parser (stack traces)                             |
-|                 - add_kubernetes_metadata (K8s API)                           |
-+────────────────────────────┼──────────────────────────────────────────────────+
-                             │ (Beats TCP :5044)
++───────────────────────────────────────────────────────────────+
+| Kubernetes Kümesi (Kind)                                      |
+|                                                               |
+|  [ payment-service Pod ]            [ Diğer Uygulama Podları ]|
+|         │ (stdout/stderr)                     │               |
+|         ▼                                     ▼               |
+|  /var/log/pods/...                  /var/log/pods/...         |
+|  /var/log/containers/*.log          /var/log/containers/*.log |
+|         │                                     │               |
+|         └──────────────────┬──────────────────┘               |
+|                            ▼                                  |
+|               [ Filebeat DaemonSet (Node) ]                   |
+|               - multiline regex: Stack trace birleştirme      |
+|               - add_kubernetes_metadata (K8s API)             |
++────────────────────────────┼──────────────────────────────────+
+                             │ (Host Ağından Port 5044 Beats)
                              ▼
-              [Logstash Pipeline (Host :5044)]
+              [ Logstash Pipeline (:5044) ]
+              - Index: k8s-logs-YYYY.MM.DD
                              │
-                             ▼
-              [Elasticsearch (Host :9200)] ──► [Kibana UI (:15601 / :5601)]
+                             ▼ (Basic Auth: elastic/BilginIT454)
+              [ Elasticsearch (:9200) ] ──► [ Kibana UI (:15601) ]
 ```
 
 ---
 
 ## Adım Adım Uygulama Rehberi
 
-### Adım 1: Host ve Ağ Yapılandırmasının Belirlenmesi
+### 1. Filebeat DaemonSet ve RBAC Kurulumu
 
-Kubernetes DaemonSet podlarının host üzerindeki Logstash'e erişebilmesi için gateway IP adresini teyit edin:
-
-```bash
-# Docker bridge ağının gateway IP adresini öğrenin (genellikle 172.17.0.1)
-docker network inspect bridge --format='{{range .IPAM.Config}}{{.Gateway}}{{end}}'
-```
-
-Eğer Kind kullanıyorsanız `kind` ağı gateway IP adresini de kontrol edebilirsiniz:
+Filebeat'in Kubernetes API'sinden pod bilgilerini okuyabilmesi için gerekli RBAC izinlerini ve DaemonSet podunu oluşturun:
 
 ```bash
-docker network inspect kind --format='{{range .IPAM.Config}}{{.Gateway}}{{end}}' 2>/dev/null || true
-```
-
-### Adım 2: Filebeat DaemonSet ve RBAC Kurulumu
-
-Filebeat'in Kubernetes API'sinden pod metadata çekebilmesi için gerekli RBAC izinleri, ConfigMap ve DaemonSet nesnesini oluşturun:
-
-```bash
+cd ~/elk-lab/04-kubernetes-cluster-logs
 kubectl apply -f filebeat-kubernetes-daemonset.yaml
 ```
 
-DaemonSet podlarının durumunu kontrol edin:
+DaemonSet podlarının çalıştığını doğrulayın:
 
 ```bash
 kubectl get pods -n logging -l app=filebeat -o wide
 ```
 
-Pod loglarını izleyerek Logstash bağlantısının başarılı olduğunu doğrulayın:
+Pod loglarını inceleyerek Logstash bağlantısının kurulduğunu teyit edin:
 
 ```bash
-kubectl logs -n logging -l app=filebeat --tail=50
+kubectl logs -n logging -l app=filebeat --tail=25
 ```
 
-Çıktıda `Connection to backoff(async(tcp://...:5044)) established` ibaresi görülmelidir.
+*`Connection to backoff(async(tcp://...:5044)) established` mesajını görün.*
 
-### Adım 3: Örnek Multiline Uygulamasının Dağıtımı
+---
 
-Hem normal JSON logları hem de Python stack trace hata logları üreten örnek mikroservisi devreye alın:
+### 2. Çok Satırlı (Multiline) Hata Üreten Test Uygulamasını Dağıtma
+
+Hem normal sipariş logları hem de çok satırlı Python `ZeroDivisionError` hata yığını basan örnek uygulamayı kümede çalıştırın:
 
 ```bash
 kubectl apply -f multiline-app-deployment.yaml
+kubectl get deployment payment-service-demo
 ```
 
-Uygulamanın çalıştığını ve log ürettiğini kontrol edin:
+Uygulamanın loglarını doğrudan kubectl ile izleyin:
 
 ```bash
-kubectl get deployment payment-service-demo
-kubectl logs -l app=payment-service --tail=20
+kubectl logs -l app=payment-service --tail=15
 ```
 
-### Adım 4: Filebeat Multiline Birleştirme Mantığı
+*Python `Traceback (most recent call last):` hata bloklarının ekrana basıldığını göreceksiniz.*
 
-`filebeat-kubernetes-daemonset.yaml` içinde tanımlanan şu kural:
+---
+
+### 3. Filebeat Çok Satır (Multiline) Birleştirme Mantığı
+
+`filebeat-kubernetes-daemonset.yaml` içinde tanımlanan kural:
 
 ```yaml
 parsers:
@@ -122,62 +113,55 @@ parsers:
       match: after
 ```
 
-Tarih damgasıyla (`YYYY-MM-DD` veya `[YYYY-MM-DD`) başlamayan satırları (örneğin Python `Traceback`, `File ...`, `ZeroDivisionError`) önceki log satırının devamı olarak kabul eder ve tek bir Elastic belgesinde birleştirir.
+* **Açıklama:** Standart bir tarih damgasıyla (`YYYY-MM-DD` veya `[YYYY-MM-DD`) başlamayan her yeni satır (örneğin `Traceback`, `File ...`, `ZeroDivisionError`), önceki satırın bir devamı kabul edilir ve Elasticsearch tarafında **tek bir log kaydında** toplanır.
 
 ---
 
 ## Doğal Doğrulama ve Beklenen Sonuç
 
-### 1. Elasticsearch İndeks Kontrolü
+### 1. Elasticsearch API ile Kubernetes Metaverisini Doğrulama
 
-Kubernetes loglarının Elasticsearch'e ulaştığını terminalden sorgulayın:
-
-```bash
-curl -s http://localhost:9200/_cat/indices?v | grep beats
-```
-
-### 2. Kubernetes Metadata Doğrulaması
-
-Son gelen belgelerdeki `kubernetes` alanlarını JSON çıktısı ile teyit edin:
+Toplanan logların Kubernetes pod bilgileriyle zenginleştirildiğini REST API ile sorgulayın:
 
 ```bash
-curl -s "http://localhost:9200/filebeat-*/_search?size=1&q=kubernetes.pod.name:payment-service*" | jq '.hits.hits[0]._source.kubernetes'
+curl -s -u elastic:BilginIT454 "http://localhost:9200/k8s-logs-*/_search?q=kubernetes.pod.name:payment-service*&pretty" | jq '.hits.hits[0]._source.kubernetes'
 ```
 
-Beklenen çıktı:
+* **Beklenen Örnek Çıktı:**
 ```json
 {
   "container": {
     "name": "payment-worker"
   },
   "namespace": "default",
-  "node": {
-    "name": "kind-control-plane"
-  },
   "pod": {
-    "name": "payment-service-demo-...",
-    "uid": "..."
+    "name": "payment-service-demo-..."
   }
 }
 ```
 
-### 3. Kibana Arayüzünde İnceleme
+---
 
-1. Tarayıcınızda `https://studentXX-kibana.devopsatolyesi.com` veya `http://<UBUNTU_IP>:15601` (yerel `http://localhost:5601`) adresini açın.
-2. **Analytics > Discover** menüsüne gidin.
-3. Arama çubuğuna şu KQL sorgusunu yazın:
-   ```kql
+### 2. Kibana Discover Ekranında Çok Satırlı Hata Analizi
+
+1. Tarayıcınızdan Kibana'ya bağlanın (`http://<SUNUCU_IP>:15601` veya `https://studentXX-kibana.devopsatolyesi.com`).
+2. **Analytics > Discover** bölümüne gidin.
+3. Veri Görünümü olarak **`Kubernetes Pod & Cluster Logs`** (`k8s-logs-*`) seçin.
+4. KQL arama çubuğuna şu filtreyi girin:
+   ```text
    kubernetes.pod.name : "payment-service*" and message : "Traceback"
    ```
-4. Gelen belgenin `message` alanını genişletin. Tüm Python hata yığınının tek bir olay altında eksiksiz görüntülendiğini doğrulayın.
+5. Sonuç listesindeki herhangi bir hata kaydını açın. `message` alanında tüm Python hata yığınının bölünmeden, tek bir blok halinde okunduğunu doğrulayın.
 
 ---
 
 ## Temizlik
 
-> **Not:** Bu temizlik komutları Kubernetes kümenizi silmez; yalnızca bu laboratuvara ait Filebeat DaemonSet ve test podlarını temizler.
+Kubernetes kaynaklarını serbest bırakmak için yalnızca bu modülde oluşturulan DaemonSet ve test podunu silin:
 
 ```bash
 kubectl delete -f multiline-app-deployment.yaml
 kubectl delete -f filebeat-kubernetes-daemonset.yaml
 ```
+
+> **Önemli Not:** Kind Kubernetes kümenizi silmeyin. Merkezi ELK omurgası (`00-elk-core-stack`), sonraki Kibana ve SIEM laboratuvarları için açık kalmalıdır.
