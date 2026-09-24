@@ -247,6 +247,12 @@ docker exec -it elasticsearch /usr/share/elasticsearch/bin/elasticsearch-reset-p
 > `ERROR: Failed to reset password for the [elastic] user, with exit code 75`
 > **Açıklama:** Güvenlik altyapısı kapalıyken Elasticsearch yerel şifre yönetim API'lerini başlatmaz. Yeni yapılandırmamızda `xpack.security.enabled=true` ve `ELASTIC_PASSWORD=BilginIT454` tanımlandığı için küme sağlıklıdır ve şifre sıfırlama aracı artık hatasız çalışır.
 
+> [!WARNING]
+> **Kibana "Exited (78)" Hatası ve Nedeni:**
+> Elastic Stack 8.0 ve sonrasında, `elastic` süper kullanıcısının Kibana'nın dahili servis bağlantısı (`elasticsearch.username`) olarak kullanılması güvenlik nedeniyle kesinlikle yasaklanmıştır (`FATAL Error: value of "elastic" is forbidden`). Kibana iç servis bağlantısı için özel tasarlanmış `kibana_system` hesabını kullanmak zorundadır.
+>
+> `docker-compose.yml` dosyasına eklenen otomatik **`kibana-setup`** servisi, `kibana_system` kullanıcısının şifresini Elasticsearch açılır açılmaz `.env` içindeki `KIBANA_PASSWORD` (`BilginIT454`) olarak ayarlar ve Kibana'nın hatasız bir şekilde ayağa kalkmasını sağlar.
+
 #### B) Kibana UI Üzerinden Yeni Kullanıcı ve Rol Tanımlama
 Prodüksiyon ortamında herkesin `elastic` süper kullanıcısını kullanması önerilmez. Kibana arayüzünden sınırlı yetkili stajyer/analist kullanıcısı oluşturabilirsiniz:
 
