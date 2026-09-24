@@ -508,6 +508,26 @@ ${KBN_CURL} -X POST "${KIBANA_URL}/api/saved_objects/dashboard/core-infrastructu
   ]
 }' > /dev/null 2>&1 || true
 
+# 8. Kibana Observability (Logs Stream) Kaynak Ayarlarını Tanımlama
+echo "[+] 8. Kibana Observability (Logs Stream) kaynak ayarları tanımlanıyor..."
+${KBN_CURL} -X POST "${KIBANA_URL}/api/kibana/settings" -d '{
+  "changes": {
+    "observability:logSources": "logs-*-*, logs-*, filebeat-*, linux-system-*, app-logs-*, system-logs-*, k8s-logs-*, docker-container-*, docker-containers-*, logstash-*"
+  }
+}' > /dev/null 2>&1 || true
+
+${KBN_CURL} -X POST "${KIBANA_URL}/api/saved_objects/infrastructure-ui-source/default?overwrite=true" -d '{
+  "attributes": {
+    "name": "Default",
+    "logIndices": {
+      "type": "index_pattern",
+      "index_pattern": "logs-*-*,logs-*,filebeat-*,linux-system-*,app-logs-*,system-logs-*,k8s-logs-*,docker-container-*,docker-containers-*,logstash-*"
+    },
+    "metricAlias": "metrics-*,metricbeat-*,linux-system-*"
+  }
+}' > /dev/null 2>&1 || true
+echo "    [✓] Kibana Observability Logs akışına tüm lab indeksleri bağlandı."
+
 echo "=================================================================="
 echo "    🎉 Veri Yükleme ve Pano Kurulumu Tamamlandı!                  "
 echo "=================================================================="

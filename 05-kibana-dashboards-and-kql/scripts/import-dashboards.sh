@@ -232,6 +232,24 @@ if [ -f "${PARENT_DIR}/scripts/create_all_dashboards.py" ]; then
   python3 "${PARENT_DIR}/scripts/create_all_dashboards.py" > /dev/null 2>&1 || true
 fi
 
+echo "[+] 6. Configuring Kibana Observability (Logs Stream) indices..."
+${KBN_CURL} -X POST "${KIBANA_URL}/api/kibana/settings" -d '{
+  "changes": {
+    "observability:logSources": "logs-*-*, logs-*, filebeat-*, linux-system-*, app-logs-*, system-logs-*, k8s-logs-*, docker-container-*, docker-containers-*, logstash-*"
+  }
+}' > /dev/null 2>&1 || true
+
+${KBN_CURL} -X POST "${KIBANA_URL}/api/saved_objects/infrastructure-ui-source/default?overwrite=true" -d '{
+  "attributes": {
+    "name": "Default",
+    "logIndices": {
+      "type": "index_pattern",
+      "index_pattern": "logs-*-*,logs-*,filebeat-*,linux-system-*,app-logs-*,system-logs-*,k8s-logs-*,docker-container-*,docker-containers-*,logstash-*"
+    },
+    "metricAlias": "metrics-*,metricbeat-*,linux-system-*"
+  }
+}' > /dev/null 2>&1 || true
+
 echo "[✓] Complete setup verified successfully!"
 echo "=================================================================="
 echo "  Kibana Dashboards List:        ${KIBANA_URL}/app/dashboards"
