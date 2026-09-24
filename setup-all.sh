@@ -3,15 +3,22 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Load .env if present
+# Load .env safely if present
+ENV_FILE=""
 if [ -f "${SCRIPT_DIR}/.env" ]; then
-  set -a
-  source "${SCRIPT_DIR}/.env"
-  set +a
+  ENV_FILE="${SCRIPT_DIR}/.env"
 elif [ -f "${SCRIPT_DIR}/00-elk-core-stack/.env" ]; then
-  set -a
-  source "${SCRIPT_DIR}/00-elk-core-stack/.env"
-  set +a
+  ENV_FILE="${SCRIPT_DIR}/00-elk-core-stack/.env"
+fi
+
+if [ -n "${ENV_FILE}" ]; then
+  while IFS='=' read -r key value || [ -n "$key" ]; do
+    [[ "$key" =~ ^[[:space:]]*# ]] && continue
+    [[ -z "$key" ]] && continue
+    key=$(echo "$key" | tr -d '[:space:]')
+    value=$(echo "$value" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
+    export "$key=$value"
+  done < "${ENV_FILE}"
 fi
 
 export ES_URL="${ES_URL:-http://localhost:9200}"

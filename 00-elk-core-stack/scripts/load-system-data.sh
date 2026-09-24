@@ -10,11 +10,15 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LAB_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-# Load .env configuration
+# Load .env configuration safely
 if [ -f "${LAB_DIR}/.env" ]; then
-  set -a
-  source "${LAB_DIR}/.env"
-  set +a
+  while IFS='=' read -r key value || [ -n "$key" ]; do
+    [[ "$key" =~ ^[[:space:]]*# ]] && continue
+    [[ -z "$key" ]] && continue
+    key=$(echo "$key" | tr -d '[:space:]')
+    value=$(echo "$value" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
+    export "$key=$value"
+  done < "${LAB_DIR}/.env"
 fi
 
 ES_URL="${ES_URL:-http://localhost:9200}"
