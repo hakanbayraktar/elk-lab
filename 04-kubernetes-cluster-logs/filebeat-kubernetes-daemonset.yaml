@@ -78,7 +78,7 @@ data:
       - add_host_metadata: ~
 
     output.logstash:
-      hosts: ["${LOGSTASH_HOST:172.17.0.1:5044}"]
+      hosts: ["${LOGSTASH_HOST:172.18.0.1:5044}"]
       worker: 2
       bulk_max_size: 512
 
@@ -114,7 +114,9 @@ spec:
           ]
           env:
             - name: LOGSTASH_HOST
-              value: "172.17.0.1:5044"
+              # The Kind network gateway on this training host. Override this
+              # variable if the Kind network uses a different gateway.
+              value: "172.18.0.1:5044"
             - name: NODE_NAME
               valueFrom:
                 fieldRef:

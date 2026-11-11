@@ -74,7 +74,7 @@ docker run -d --name filebeat-linux --net=host \
   --user=root \
   -v $(pwd)/filebeat-linux.yml:/usr/share/filebeat/filebeat.yml:ro \
   -v /var/log:/var/log:ro \
-  docker.elastic.co/beats/filebeat:8.17.0 -e -strict.perms=false
+  docker.elastic.co/beats/filebeat:8.17.0 -e --strict.perms=false
 ```
 
 Filebeat'in Logstash'e bağlandığını doğrulamak için loglarına bakın:
