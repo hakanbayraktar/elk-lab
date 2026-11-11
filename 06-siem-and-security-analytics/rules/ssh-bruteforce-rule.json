@@ -13,7 +13,7 @@
         "query": "message: \"Failed password\" or message: \"authentication failure\""
       }
     ],
-    "groupBy": "client_ip"
+    "groupBy": "client_ip.keyword"
   },
   "actions": [],
   "tags": ["siem", "ssh", "brute-force", "mitre-t1110"]

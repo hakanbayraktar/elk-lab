@@ -80,6 +80,7 @@ services:
       - ELASTICSEARCH_USERNAME=kibana_system
       - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD:-BilginIT454}
       - SERVER_NAME=kibana
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=${KIBANA_ENCRYPTION_KEY:-elk-lab-encrypted-saved-objects-key-2026}
     ports:
       - "${KIBANA_PORT:-15601}:5601"
       - "5601:5601"
