@@ -203,7 +203,10 @@ def create_dashboard(dash_id, title, desc, panels, references):
             "description": desc,
             "panelsJSON": json.dumps(panels),
             "optionsJSON": json.dumps({"useMargins": True, "syncColors": True, "hidePanelTitles": False}),
-            "timeRestore": False,
+            "timeRestore": True,
+            "timeFrom": "now-24h",
+            "timeTo": "now",
+            "refreshInterval": {"pause": True, "value": 60000},
             "kibanaSavedObjectMeta": {
                 "searchSourceJSON": json.dumps({"query": {"language": "kuery", "query": ""}, "filter": []})
             }

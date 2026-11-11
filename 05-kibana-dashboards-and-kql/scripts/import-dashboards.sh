@@ -212,7 +212,10 @@ ${KBN_CURL} -X POST "${KIBANA_URL}/api/saved_objects/dashboard/devops-ops-overvi
       "description": "Live production dashboard for Nginx, Node.js API, and Security events",
       "panelsJSON": "[{\"version\":\"8.17.0\",\"type\":\"lens\",\"gridData\":{\"x\":0,\"y\":0,\"w\":48,\"h\":14,\"i\":\"1\"},\"panelIndex\":\"1\",\"panelRefName\":\"panel_0\"},{\"version\":\"8.17.0\",\"type\":\"lens\",\"gridData\":{\"x\":0,\"y\":14,\"w\":24,\"h\":14,\"i\":\"2\"},\"panelIndex\":\"2\",\"panelRefName\":\"panel_1\"},{\"version\":\"8.17.0\",\"type\":\"lens\",\"gridData\":{\"x\":24,\"y\":14,\"w\":24,\"h\":14,\"i\":\"3\"},\"panelIndex\":\"3\",\"panelRefName\":\"panel_2\"}]",
       "optionsJSON": "{\"useMargins\":true,\"syncColors\":true,\"hidePanelTitles\":false}",
-      "timeRestore": false,
+      "timeRestore": true,
+      "timeFrom": "now-24h",
+      "timeTo": "now",
+      "refreshInterval": {"pause": true, "value": 60000},
       "kibanaSavedObjectMeta": {
         "searchSourceJSON": "{\"query\":{\"language\":\"kuery\",\"query\":\"\"},\"filter\":[]}"
       }

@@ -84,6 +84,8 @@ docker run --rm --name demo-worker alpine sh -c '
     echo "{\"event\": \"job_processed\", \"job_id\": $i, \"status\": \"success\", \"duration_ms\": $((i * 15))}"
     sleep 1
   done
+  # Filebeat'in son satırı okuması için konteyneri kısa süre açık tutun.
+  sleep 5
 '
 ```
 
