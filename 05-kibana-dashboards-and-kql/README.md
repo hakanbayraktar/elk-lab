@@ -127,11 +127,46 @@ Bu script sırasıyla:
 
 ## Doğal Doğrulama ve Beklenen Sonuç
 
+### 1. Terminalde Dashboard Varlık Kontrolü
+
+Kibana Saved Objects API ile tüm panoların yüklendiğini doğrulayın:
+
+```bash
+curl -s -u elastic:BilginIT454 \
+  'http://localhost:15601/api/saved_objects/_find?type=dashboard&per_page=20' \
+  -H 'kbn-xsrf: true' | jq '.total, (.saved_objects[] | .attributes.title)'
+```
+
+**Beklenen:** En az **8** pano listelenir (5 özel DevOps + 3 resmi örnek).
+
+### 2. Data View Kontrolü
+
+```bash
+curl -s -u elastic:BilginIT454 \
+  'http://localhost:15601/api/data_views' \
+  -H 'kbn-xsrf: true' | jq '.data_view[] | {id, title}'
+```
+
+**Beklenen:** `app-logs-*`, `system-logs-*`, `k8s-logs-*`, `cicd-logs-*` data view'ları listelenir.
+
+### 3. İndeks Veri Sayımı
+
+```bash
+curl -s -u elastic:BilginIT454 'http://localhost:9200/_cat/indices/app-logs-*,system-logs-*,k8s-logs-*?h=index,docs.count&v'
+```
+
+**Beklenen:** Her indekste en az yüzlerce belge bulunur.
+
+### 4. Kibana Arayüzünde Görsel Doğrulama
+
 Kibana'da **Analytics > Dashboard** listesini açın. Aşağıdaki panoların listelendiğini ve tıklandığında grafiklerin dolu olarak açıldığını doğrulayın:
 
-* 👉 **DevOps Altyapı Panosu:** `http://<SUNUCU_IP>:15601/app/dashboards#/view/devops-ops-overview`
-* 👉 **Çekirdek Sistem Panosu:** `http://<SUNUCU_IP>:15601/app/dashboards#/view/core-infrastructure-overview`
-* 👉 **Resmi Web Trafik Panosu:** `http://<SUNUCU_IP>:15601/app/dashboards#/view/edf84fe0-e1a0-11e7-b6d5-4dc382ef7f5b`
+* **DevOps Altyapı Panosu:** `http://<SUNUCU_IP>:15601/app/dashboards#/view/devops-ops-overview`
+* **Microservices & API:** `http://<SUNUCU_IP>:15601/app/dashboards#/view/devops-microservices-observability`
+* **Kubernetes Cluster & Pod:** `http://<SUNUCU_IP>:15601/app/dashboards#/view/k8s-cluster-pod-health`
+* **CI/CD Pipeline:** `http://<SUNUCU_IP>:15601/app/dashboards#/view/cicd-pipeline-performance`
+* **Security SIEM:** `http://<SUNUCU_IP>:15601/app/dashboards#/view/security-siem-threat-center`
+* **Resmi Web Trafik Panosu:** `http://<SUNUCU_IP>:15601/app/dashboards#/view/edf84fe0-e1a0-11e7-b6d5-4dc382ef7f5b`
 
 ---
 

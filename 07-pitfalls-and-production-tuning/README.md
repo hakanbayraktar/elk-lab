@@ -120,13 +120,31 @@ curl -s -u elastic:BilginIT454 "http://localhost:9200/_ilm/policy/devops_7day_re
 
 1. **Yeşil Küme ve 0 Atanmamış Shard:**
    ```bash
-   curl -s -u elastic:BilginIT454 "http://localhost:9200/_cluster/health" | jq '{status: .status, unassigned_shards: .unassigned_shards, active_shards: .active_shards}'
+   curl -s -u elastic:BilginIT454 "http://localhost:9200/_cluster/health" | jq '{status, unassigned_shards, active_shards}'
    ```
    * **Beklenen Çıktı:** `status: "green"`, `unassigned_shards: 0`
 
-2. **Shard Detay Listesi:**
+2. **Flood-Stage Simülasyonu Sonucu:**
    ```bash
-   curl -s -u elastic:BilginIT454 "http://localhost:9200/_cat/shards?v"
+   # Kilidi simüle et
+   ./scripts/simulate-flood-stage.sh
+   # Beklenen: HTTP 429 "disk usage exceeded flood-stage watermark" hatası
+   
+   # Kilidi aç
+   ./scripts/unlock-flood-stage.sh
+   # Beklenen: "acknowledged: true", yazma tekrar çalışır
+   ```
+
+3. **ILM Politika Doğrulama:**
+   ```bash
+   curl -s -u elastic:BilginIT454 "http://localhost:9200/devops-logs-000001/_ilm/explain" \
+     | jq '.indices["devops-logs-000001"] | {managed, policy, phase}'
+   ```
+   * **Beklenen:** `managed: true`, `policy: "devops_7day_retention"`, `phase: "new"` veya `"hot"`
+
+4. **Shard Detay Listesi:**
+   ```bash
+   curl -s -u elastic:BilginIT454 "http://localhost:9200/_cat/shards?v&s=index" | head -30
    ```
 
 ---
