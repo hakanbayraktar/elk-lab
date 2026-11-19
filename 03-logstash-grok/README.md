@@ -48,11 +48,16 @@ cd ~/elk-lab/03-logstash-grok
 docker compose up -d
 ```
 
-`demo-nginx` container'ı `co.elastic.logs/enabled: "true"` etiketini taşır; LAB-02'deki Filebeat logunu otomatik toplar.
+`demo-nginx` container'ı `co.elastic.logs/enabled: "true"` etiketini taşır; LAB-02'deki Filebeat logunu otomatik toplar. Nginx her isteği **erişim satırı** olarak stdout'a, hataları (ör. dosya bulunamadı) **hata satırı** olarak stderr'e yazar. Filebeat ikisini de gönderir; hangisinden geldiği `stream` alanında (`stdout` / `stderr`) durur.
 
 ### 2. Önce: grok olmadan
 
-Nginx'e bir istek atın. Satır birkaç saniye içinde Elasticsearch'e düşer; komut gelene kadar bekler:
+Nginx'e olmayan bir sayfa (`/urunler`) için istek atın; Nginx `404` döner ve bir erişim satırı yazar.
+
+- `-A "Mozilla/5.0"`: isteğe tarayıcı kimliği (User-Agent) koyar; bu değer erişim satırında görünür.
+- `--retry 5 --retry-all-errors`: Nginx henüz açılmadıysa isteği 5 kez tekrar dener.
+
+`until` döngüsü satır Elasticsearch'e düşene kadar bekler; ardından belgeyi gösterir. Sorgudaki `stream:stdout` erişim satırını seçer, aynı istek için yazılan stderr hata satırını dışarıda bırakır:
 
 ```bash
 curl -s --retry 5 --retry-all-errors -o /dev/null -w "%{http_code}\n" -A "Mozilla/5.0" http://localhost:8081/urunler
@@ -111,7 +116,7 @@ Deseni bozup (ör. `%{COMBINEDAPACHELOG}` yerine `%{IP:ip} %{WORD:yanlis}`) tekr
 
 ### 4. Grok filtresini ekleme
 
-Filtre dosyasını LAB-01'in pipeline klasörüne kopyalayın. Logstash değişikliği kendisi yükler:
+Filtre dosyasını LAB-01'in pipeline klasörüne kopyalayın. LAB-01'deki `CONFIG_RELOAD_AUTOMATIC=true` ayarı sayesinde Logstash klasörü birkaç saniyede bir kontrol eder, yeni dosyayı görünce pipeline'ı durdurmadan yeniden kurar. Logdaki `Reloading pipeline` satırı yeniden yüklemenin başladığını, `Pipelines running` satırı yeni pipeline'ın çalıştığını gösterir. Dosyada hata olsaydı eski pipeline çalışmaya devam eder ve logda `ERROR` görünürdü:
 
 ```bash
 cp ~/elk-lab/03-logstash-grok/pipeline/50-grok.conf ~/elk-lab/01-elk-stack-setup/pipeline/
@@ -160,7 +165,7 @@ curl -s -u elastic:'DevOps2026!' "http://localhost:9200/docker-logs-*/_search?q=
 }
 ```
 
-Artık durum koduna göre sorgu yapılabilir:
+`http.response.status_code` artık sayı türünde ayrı bir alan; durum koduna göre sorgu yapılabilir. Grok öncesinde 404 yalnız metnin içinde geçtiği için bu sorgu sonuç vermezdi:
 
 ```bash
 curl -s -u elastic:'DevOps2026!' "http://localhost:9200/docker-logs-*/_count?q=http.response.status_code:404" | jq .count
@@ -196,7 +201,7 @@ curl -s -u elastic:'DevOps2026!' "http://localhost:9200/system-logs-*/_search?q=
 }
 ```
 
-LAB-02'deki aynı türden satır yalnız `message` idi; şimdi kim (`user.name`), nereden (`source.ip`) ve sonuç (`event.outcome`) ayrı alanlar. Sunucu internete açık olduğu için başka IP'lerden gelen gerçek denemeler de aynı şekilde ayrışır:
+Grok eklenmeden önce aynı türden satır yalnız `message` alanıydı; şimdi kim (`user.name`), nereden (`source.ip`) ve sonuç (`event.outcome`) ayrı alanlar. Sunucu internete açık olduğu için başka IP'lerden gelen gerçek denemeler de aynı şekilde ayrışır. Aşağıdaki **terms aggregation**, başarısız girişleri `source.ip` değerine göre gruplar ve en çok deneme yapan 5 IP'yi sayısıyla verir. `source.ip.keyword`, alanın gruplamaya uygun, bölünmemiş (keyword) hâlidir; metin alanları gruplanamaz:
 
 ```bash
 curl -s -u elastic:'DevOps2026!' "http://localhost:9200/system-logs-*/_search?size=0&q=event.outcome:failure" \

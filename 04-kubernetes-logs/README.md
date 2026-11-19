@@ -54,12 +54,14 @@ Kubernetes bunu dört ayrı satır olarak yazar. `multiline` ayarı `[` ile baş
 
 ### 1. Cluster'ı kurma
 
+kind, Kubernetes node'larını Docker container'ı olarak çalıştırır. `kind-config.yaml` tek node'lu `elk-lab` cluster'ını tanımlar. `--kubeconfig ~/.kube/elk-lab`, bağlantı bilgisini ayrı bir dosyaya yazar; varsayılan `~/.kube/config` dosyası ve sunucudaki diğer cluster'ların ayarı değişmez:
+
 ```bash
 cd ~/elk-lab/04-kubernetes-logs
 kind create cluster --config kind-config.yaml --kubeconfig ~/.kube/elk-lab
 ```
 
-Bu terminalde `kubectl` bu cluster'ı kullansın:
+`KUBECONFIG` değişkeni, bu terminalde `kubectl`'in hangi dosyayı okuyacağını belirler. Node'un hazır olması (`Ready`) birkaç saniye sürer; `kubectl wait` hazır olana kadar bekler:
 
 ```bash
 export KUBECONFIG=~/.kube/elk-lab
@@ -75,7 +77,9 @@ elk-lab-control-plane   Ready    control-plane   40s   v1.37.0
 
 ### 2. Filebeat DaemonSet'i kurma
 
-kind ağının IPv4 gateway adresini bulun:
+Filebeat pod'u, sunucudaki Logstash'e (`5044`) bağlanmalı. kind node'u `kind` adlı Docker ağında çalışan bir container'dır; bu ağın **gateway** adresi, container'ın gözünden sunucunun kendisidir. Logstash `5044` portunu sunucuda yayınladığı için pod bu adresle Logstash'e ulaşır.
+
+`docker network inspect`, ağın IPv4 ve IPv6 gateway adreslerini verir; `grep` yalnız IPv4 olanı alır:
 
 ```bash
 GW=$(docker network inspect kind -f '{{range .IPAM.Config}}{{.Gateway}} {{end}}' | tr ' ' '\n' | grep -E '^[0-9.]+$')
@@ -86,7 +90,7 @@ echo "$GW"
 172.18.0.1
 ```
 
-Adresi manifeste yazıp uygulayın:
+Manifestteki `LOGSTASH_IP` yer tutucusunu `sed` ile bu adresle değiştirip `kubectl`'e gönderin. Manifest; `logging` namespace'ini, Filebeat'in Kubernetes API'sini okuması için ServiceAccount ve ClusterRole'u, ayarlarını tutan ConfigMap'i ve DaemonSet'i oluşturur. `rollout status`, DaemonSet'in her node'da pod'unu çalıştırmasını bekler:
 
 ```bash
 sed "s/LOGSTASH_IP/$GW/" filebeat-daemonset.yaml | kubectl apply -f -
@@ -110,7 +114,7 @@ kubectl apply -f payment-app.yaml
 kubectl rollout status deployment/payment-service --timeout=180s
 ```
 
-Uygulamanın çıktısına bakın:
+Uygulamanın kendi çıktısına bakın. Hata yığını burada dört ayrı satırdır; Elasticsearch'te nasıl göründüğünü bir sonraki adımda karşılaştıracağız:
 
 ```bash
 sleep 15
@@ -128,7 +132,7 @@ ZeroDivisionError: division by zero
 
 ### 4. Logları Elasticsearch'te görme
 
-Hata yığını içeren bir belge:
+`Traceback` geçen bir belgeyi alın. `kubernetes.*` alanlarını Filebeat'in `add_kubernetes_metadata` işlemcisi ekledi: log hangi pod'dan, hangi namespace'ten, hangi node'dan geldi:
 
 ```bash
 sleep 20

@@ -47,14 +47,14 @@ Kibana menüsünden **Security > Rules > Detection rules (SIEM)**'e gidin ve sa�
 
 **Define rule:**
 
-1. Rule type olarak **Threshold**'u (1) seçin.
+1. Rule type olarak **Threshold**'u (1) seçin. Threshold kuralı, sorguya uyan belgeleri bir alana göre gruplar ve bir grubun sayısı eşiği geçerse alert üretir. Brute force tam olarak budur: aynı IP'den kısa sürede çok sayıda başarısız giriş.
 
    ![Rule type](../assets/screenshots/LAB-ELK-06/01-rule-type.png){width=75%}
 
-2. **Index patterns** (2) alanındaki varsayılan desenleri sağdaki ⓧ ile silin, `system-logs-*` yazıp Enter'a basın.
-3. **Custom query** (3): `event.category : "authentication" and event.outcome : "failure"`
-4. **Group by** (4): `source.ip.keyword` yazıp listeden seçin.
-5. **Threshold** (5): `5`. Sonra **Continue**'ya tıklayın.
+2. **Index patterns** (2): kuralın hangi index'lerde arayacağı. Varsayılan desenler Elastic Agent index'leri içindir; sağdaki ⓧ ile silin, `system-logs-*` yazıp Enter'a basın.
+3. **Custom query** (3): hangi belgelerin sayılacağı. Yalnız başarısız kimlik doğrulama satırları: `event.category : "authentication" and event.outcome : "failure"`
+4. **Group by** (4): sayımın hangi alana göre ayrılacağı. `source.ip.keyword` yazıp listeden seçin; her IP ayrı sayılır.
+5. **Threshold** (5): `5`. Bir IP'nin sayısı 5'e ulaşınca alert üretilir. Sonra **Continue**'ya tıklayın.
 
    ![Define rule](../assets/screenshots/LAB-ELK-06/02-define-rule.png){width=75%}
 
@@ -62,8 +62,8 @@ Kibana menüsünden **Security > Rules > Detection rules (SIEM)**'e gidin ve sa�
 
 6. **Name** (6): `SSH brute force: aynı IP'den 5+ başarısız giriş`
 7. **Description** (7): `Son 6 dakikada aynı kaynak IP'den en az 5 başarısız SSH girişi.`
-8. **Default severity** (8): **High**
-9. **Tags** (9): `elk-lab` yazıp Enter'a basın. Sonra **Continue**.
+8. **Default severity** (8): **High**. Alert listesinde önem sırasını ve rengini belirler; risk skoru da buna göre 73 olur.
+9. **Tags** (9): `elk-lab` yazıp Enter'a basın. Etiket, kuralları listede filtrelemeye ve temizlikte bu labın kurallarını tek komutla silmeye yarar. Sonra **Continue**.
 
    ![About rule](../assets/screenshots/LAB-ELK-06/03-about-rule.png){width=75%}
 
@@ -76,7 +76,7 @@ Kibana menüsünden **Security > Rules > Detection rules (SIEM)**'e gidin ve sa�
 
 **Rule actions:**
 
-12. Bildirim eklemeden **Create & enable rule**'a (12) tıklayın.
+12. **Rule actions** alert oluşunca e-posta, Slack gibi bildirim göndermek içindir; bu labda alert'leri Kibana'da göreceğiz. Bildirim eklemeden **Create & enable rule**'a (12) tıklayın; kural hemen çalışmaya başlar.
 
    ![Create and enable](../assets/screenshots/LAB-ELK-06/05-create-enable.png){width=75%}
 
@@ -94,7 +94,7 @@ curl -s -u elastic:'DevOps2026!' -X POST "http://localhost:15601/api/detection_e
 
 ### 2. Web kuralını API ile kurma
 
-İkinci kuralı dosyadan, Kibana Detection Engine API'siyle kurun:
+İkinci kuralı dosyadan, Kibana Detection Engine API'siyle kurun. Arayüzde doldurduğunuz alanların aynısı JSON dosyasında yazılıdır (`type: query`, `index`, `query`, `severity`, `interval`). Çok sayıda kuralı aynı anda kurmak ya da kuralları Git'te saklamak için bu yol kullanılır. `kbn-xsrf` başlığı, Kibana API'sinin değişiklik yapan isteklerde zorunlu tuttuğu bir güvenlik başlığıdır:
 
 ```bash
 cd ~/elk-lab/06-siem-detection
@@ -112,7 +112,7 @@ curl -s -u elastic:'DevOps2026!' -X POST "http://localhost:15601/api/detection_e
 
 ### 3. SSH brute force
 
-Var olmayan bir kullanıcıyla 6 kez SSH girişi deneyin:
+Var olmayan `saldirgan` kullanıcısıyla 6 kez SSH girişi deneyin. Eşik 5 olduğu için 6 deneme kuralı tetikler. Döngü, 6 satırın da Elasticsearch'e düşmesini bekler ve sayıyı gösterir:
 
 ```bash
 for i in 1 2 3 4 5 6; do
@@ -128,7 +128,13 @@ curl -s -u elastic:'DevOps2026!' "http://localhost:9200/system-logs-*/_count?q=u
 
 ### 4. Web saldırısı
 
-Demo Nginx'e dizin atlatma, gizli dosya ve SQL injection istekleri gönderin. `--path-as-is`, `curl`'ün `../` kısmını silmeden göndermesini sağlar:
+Demo Nginx'e saldırgan tarayıcılarının sık denediği dört istek gönderin:
+
+- `/../../../../etc/passwd`: dizin atlatma; sunucudaki parola dosyasını okumaya çalışır.
+- `/.env`, `/.git/config`: yanlışlıkla yayına açık kalmış gizli ayar dosyalarını arar.
+- `?id=1 UNION SELECT password`: SQL injection; veritabanından parola çekmeye çalışır.
+
+`--path-as-is`, `curl`'ün `../` kısmını silmeden göndermesini sağlar. Nginx bu istekleri reddeder (400/404), ama her biri erişim loguna yazılır ve kural bunları yakalar:
 
 ```bash
 for p in "/../../../../etc/passwd" "/.env" "/.git/config" "/urunler?id=1%20UNION%20SELECT%20password"; do
@@ -145,7 +151,7 @@ done
 
 ### 5. Alert'leri görme
 
-Kurallar dakikada bir çalışır. İki dakika bekleyip alert'leri kural adına göre sayın:
+Kurallar dakikada bir çalışır. Olaylardan sonra her kuralın en az bir kez çalışması için iki dakika bekleyip alert'leri kural adına göre sayın. Alert'ler `.alerts-security.alerts-default` index'ine yazılır; sorgu bu index'te kural adına göre gruplama yapar:
 
 ```bash
 sleep 120

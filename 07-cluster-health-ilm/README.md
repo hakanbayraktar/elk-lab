@@ -38,7 +38,7 @@ ILM (Index Lifecycle Management), index'in yaşam döngüsünü politikayla yön
 curl -s -u elastic:'DevOps2026!' "http://localhost:9200/_cluster/health?filter_path=status,number_of_nodes,unassigned_shards" | jq -c .
 ```
 
-Replica'sı 1 olan bir test index'i oluşturun ve shard'larına bakın:
+Durumu kendi index'inizde görmek için replica'sı 1 olan bir test index'i oluşturun ve shard'larına bakın. `_cat/shards` her shard'ın türünü ve durumunu tablo olarak verir:
 
 ```bash
 curl -s -u elastic:'DevOps2026!' -X PUT "http://localhost:9200/health-demo" \
@@ -52,7 +52,7 @@ health-demo 0     p      STARTED
 health-demo 0     r      UNASSIGNED INDEX_CREATED
 ```
 
-`p` primary, `r` replica. Replica atanmamış. Nedenini Elasticsearch'e sorun:
+`p` primary (asıl), `r` replica (yedek). Replica `UNASSIGNED`. `_cluster/allocation/explain` API'si, bir shard'ın neden atanamadığını her node için ayrı ayrı açıklar; atanmamış shard'larda ilk bakılacak yer burasıdır:
 
 ```bash
 curl -s -u elastic:'DevOps2026!' -X POST "http://localhost:9200/_cluster/allocation/explain?filter_path=current_state,node_allocation_decisions.deciders.explanation" \
@@ -75,7 +75,7 @@ curl -s -u elastic:'DevOps2026!' "http://localhost:9200/_cat/indices/health-demo
 green health-demo 0
 ```
 
-Lab index'leri her gün yeni adla açılır (`system-logs-2026.11.20` gibi). Yeni index'lerin de replica'sız açılması için bir index template ekleyin:
+Lab index'leri her gün yeni adla açılır (`system-logs-2026.11.20` gibi). Yeni index'lerin de replica'sız açılması için bir **index template** ekleyin. Template, adı belirli bir desene uyan her yeni index'e baştan uygulanacak ayarları tutar; Logstash ertesi gün `system-logs-2026.11.20`'yi açtığında bu ayarlar otomatik gelir:
 
 ```bash
 curl -s -u elastic:'DevOps2026!' -X PUT "http://localhost:9200/_index_template/elk-lab-logs" \
@@ -185,7 +185,12 @@ curl -s -u elastic:'DevOps2026!' -X PUT "http://localhost:9200/_ilm/policy/ilm-d
   -d '{"policy": {"phases": {"hot": {"actions": {"rollover": {"max_docs": 3}}}, "delete": {"min_age": "10m", "actions": {"delete": {}}}}}}' | jq -c .
 ```
 
-Template, `ilm-demo-*` index'lerine politikayı ve yazma alias'ını bağlar. İlk index alias ile açılır:
+Rollover için iki parça gerekir:
+
+- **Alias:** index'e verilen ikinci ad. Uygulama gerçek index adını (`ilm-demo-000001`) değil, alias'ı (`ilm-demo`) kullanır. `is_write_index: true`, yazmaların alias altındaki hangi index'e gideceğini belirler.
+- **Template:** `ilm-demo-*` adıyla açılan her index'e politikayı (`index.lifecycle.name`) ve alias adını (`index.lifecycle.rollover_alias`) bağlar; ILM'in açacağı `000002` de bu ayarlarla açılır.
+
+Template'i ekleyin ve ilk index'i alias ile açın:
 
 ```bash
 curl -s -u elastic:'DevOps2026!' -X PUT "http://localhost:9200/_index_template/ilm-demo" \

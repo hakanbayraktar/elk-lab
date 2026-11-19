@@ -25,7 +25,7 @@ Filebeat sunucuda tek bir container olarak çalışır ve iki kaynağı okur:
 | `/var/log/auth.log` | `filestream` input | `fields.log_source: system` | `system-logs-*` |
 | Docker container logları | `docker` autodiscover; yalnız `co.elastic.logs/enabled=true` etiketli container'lar | `fields.log_source: docker`, `container.name`, `container.image.name` | `docker-logs-*` |
 
-Etiket şartı, sunucudaki bütün container'ların (Jenkins, SonarQube…) loglarını toplamamak içindir. Logstash index adını `log_source` alanından üretir (LAB-01 `pipeline/90-output.conf`).
+Etiket şartı, sunucudaki bütün container'ların (Jenkins, SonarQube…) loglarını toplamamak içindir. Logstash index adını `log_source` alanından üretir (`01-elk-stack-setup/pipeline/90-output.conf`).
 
 <details>
 <summary><strong>filebeat.yml ve compose satırları</strong></summary>
@@ -45,12 +45,14 @@ Etiket şartı, sunucudaki bütün container'ların (Jenkins, SonarQube…) logl
 
 ### 1. Filebeat'i başlatma
 
+Compose tek bir container (`elk-filebeat`) başlatır. Container, `filebeat.yml`'i ve sunucunun `/var/log`, Docker log klasörü ile `docker.sock` dosyasını salt okunur bağlar; böylece sunucudaki logları container'ın içinden okuyabilir.
+
 ```bash
 cd ~/elk-lab/02-filebeat-host-docker
 docker compose up -d
 ```
 
-Filebeat'in Logstash'e bağlandığını loglardan görün:
+Filebeat açılınca `elk-logstash:5044` adresine bağlanmaya çalışır. Bağlantı kurulunca loguna `Connection ... established` yazar; bu satır yoksa Logstash ayakta değildir ya da Filebeat `elk-net` ağına katılamamıştır. `sleep 15`, Filebeat'in açılıp bağlanması için süre tanır:
 
 ```bash
 sleep 15
@@ -63,14 +65,20 @@ Connection to backoff(async(tcp://elk-logstash:5044)) established
 
 ### 2. Linux loglarını görme
 
-Filebeat `auth.log` dosyasını baştan okur; belge sayısı bir süre artmaya devam eder:
+Filebeat bir dosyayı ilk kez gördüğünde baştan okur ve nereye kadar okuduğunu `filebeat-data` volume'undaki kayıt dosyasına (registry) yazar. Yeniden başlarsa kaldığı yerden devam eder, aynı satırı iki kez göndermez. `auth.log` büyük olabileceği için (sunucuya internetten sürekli SSH denemesi gelir) belge sayısı bir süre artmaya devam eder:
 
 ```bash
 sleep 20
 curl -s -u elastic:'DevOps2026!' "http://localhost:9200/_cat/indices/system-logs-*?v&h=index,docs.count"
 ```
 
-Sunucuya kendiniz bir başarısız SSH girişi yapın; satır `auth.log`'a düşer:
+Toplamanın çalıştığını kendi ürettiğiniz bir satırla kanıtlayın: sunucuya var olmayan `deneme` kullanıcısıyla SSH girişi deneyin. SSH sunucusu (`sshd`) bu denemeyi `auth.log`'a `Invalid user deneme` olarak yazar. Parametreler:
+
+- `BatchMode=yes`: parola sormaz; giriş hemen reddedilir.
+- `StrictHostKeyChecking=no`, `UserKnownHostsFile=/dev/null`: "bu sunucuya güveniyor musunuz?" sorusunu sormaz ve anahtarı kaydetmez.
+- `LogLevel=ERROR`: istemcinin uyarı satırlarını gizler.
+
+`Permission denied` çıktısı beklenen sonuçtur:
 
 ```bash
 ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR deneme@localhost true
@@ -80,7 +88,7 @@ ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
 deneme@localhost: Permission denied (publickey,password,keyboard-interactive).
 ```
 
-Filebeat önce dosyadaki eski satırları okur; yeni satır en son gelir. Satır Elasticsearch'e düşene kadar bekleyin (birkaç dakika sürebilir):
+Filebeat önce dosyadaki eski satırları gönderir; sizin satırınız dosyanın sonunda olduğu için en son gelir. `until` döngüsü, `deneme` geçen belge sayısı 0'dan büyük olana kadar 10 saniyede bir sorar; satır gelince durur (birkaç dakika sürebilir). Ardından toplam belge sayısını gösterir:
 
 ```bash
 until curl -s -u elastic:'DevOps2026!' "http://localhost:9200/system-logs-*/_count?q=message:deneme" | jq -e '.count > 0' > /dev/null; do sleep 10; done
@@ -107,11 +115,14 @@ curl -s -u elastic:'DevOps2026!' "http://localhost:9200/system-logs-*/_search?q=
 }
 ```
 
-Satırın tamamı tek bir `message` alanında duruyor; kullanıcı adı ve IP ayrı alan değil. LAB-03'te grok ile bunları alanlara ayıracağız.
+Satırın tamamı tek bir `message` alanında duruyor; kullanıcı adı ve IP ayrı alan değil. Bu yüzden "hangi IP kaç kez denedi" gibi sorular sorulamaz; yalnız metin içinde arama yapılabilir. Satırı alanlara ayırmak için Logstash'te grok filtresi gerekir; Filebeat satırı olduğu gibi taşır.
 
 ### 3. Docker loglarını görme
 
-Etiketli bir test container'ı çalıştırın. Üç satır yazar ve kapanır:
+Etiketli bir test container'ı çalıştırın. `--label co.elastic.logs/enabled=true`, Filebeat'e "bu container'ın logunu topla" der; autodiscover container başlarken etiketi görür ve o container için bir okuyucu açar. Container üç satır yazar ve kapanır:
+
+- `--rm`: container kapanınca silinir.
+- `sleep 10`: container'ı 10 saniye daha açık tutar. Container hemen kapanırsa autodiscover okuyucuyu da kapatır ve son satırlar okunmadan kalabilir.
 
 ```bash
 docker run --rm --name demo-worker --label co.elastic.logs/enabled=true alpine \
@@ -124,13 +135,13 @@ job 2 tamamlandi
 job 3 tamamlandi
 ```
 
-Etiketsiz bir container'ın logu toplanmaz:
+Aynı şeyi etiketsiz bir container'la yapın; bu container'ın logu toplanmaz:
 
 ```bash
 docker run --rm --name demo-etiketsiz alpine echo "bu satir toplanmaz"
 ```
 
-Container loglarını sorgulayın:
+Son 5 container logunu en yeniden eskiye (`sort=@timestamp:desc`) sıralayıp sorgulayın:
 
 ```bash
 sleep 10

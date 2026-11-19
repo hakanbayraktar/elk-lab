@@ -80,7 +80,7 @@ Panolar açılışta son 24 saati gösterir. Sağ üstteki zaman seçicisini de�
 
 ### 2. Data view oluşturma
 
-Kendi SSH loglarınız için bir data view oluşturun.
+Kendi SSH loglarınız için bir data view oluşturun. Logstash her gün yeni bir index açar (`system-logs-2026.11.19`, `system-logs-2026.11.20`…). Index pattern'deki `*`, bunların hepsini tek data view altında toplar. **Timestamp field**, Kibana'nın sağ üstteki zaman seçicisiyle hangi alana göre filtreleyeceğini belirler; seçilmezse "son 24 saat" gibi filtreler çalışmaz.
 
 1. Menüden **Management > Stack Management > Data Views**'a gidin ve **Create data view**'a (2) tıklayın.
 
@@ -97,7 +97,7 @@ Kendi SSH loglarınız için bir data view oluşturun.
 1. Menüden **Analytics > Discover**'ı açın.
 2. Sol üstteki data view seçicisinden (6) **Sistem Logları**'nı seçin (listede görünmüyorsa arama kutusuna `Sistem` yazın).
 3. Sağ üstten zaman aralığını **Last 24 hours** yapın.
-4. Arama çubuğuna (7) yazıp Enter'a basın:
+4. Arama çubuğuna (7) aşağıdaki KQL sorgusunu yazıp Enter'a basın. `event.outcome` alanını Logstash'teki grok filtresi üretti; başarısız SSH girişlerinde `failure` değerini alır. Sorgu, `auth.log`'daki binlerce satırdan yalnız başarısız girişleri listeler:
 
 ```text
 event.outcome : "failure"
@@ -121,7 +121,7 @@ Başka sorgular deneyin:
 
 2. Sol üstte data view olarak **Sistem Logları**'nı seçin (9).
 3. Arama çubuğuna (10) `event.outcome : "failure"` yazıp Enter'a basın.
-4. Sol listede `source.ip` arayın ve **source.ip.keyword** alanını (11) ortadaki boş alana sürükleyin. Lens, IP başına başarısız giriş sayısını çubuk grafik olarak çizer.
+4. Sol listede `source.ip` arayın ve **source.ip.keyword** alanını (11) ortadaki boş alana sürükleyin. Lens, IP başına başarısız giriş sayısını çubuk grafik olarak çizer. Gruplama için `.keyword` hâli kullanılır: metin alanı kelimelere bölünerek saklanır, keyword hâli ise değeri bölmeden tutar ve sayılabilir.
 5. Sağ üstteki **Save and return**'e (12) tıklayın.
 
    ![Lens](../assets/screenshots/LAB-ELK-05/06-lens-drag-field.png){width=75%}
