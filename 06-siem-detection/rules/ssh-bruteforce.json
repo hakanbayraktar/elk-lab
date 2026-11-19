@@ -1,0 +1,16 @@
+{
+  "rule_id": "elk-lab-ssh-bruteforce",
+  "name": "SSH brute force: aynı IP'den 5+ başarısız giriş",
+  "description": "Son 6 dakikada aynı kaynak IP'den en az 5 başarısız SSH girişi.",
+  "type": "threshold",
+  "index": ["system-logs-*"],
+  "language": "kuery",
+  "query": "event.category : \"authentication\" and event.outcome : \"failure\"",
+  "threshold": { "field": ["source.ip.keyword"], "value": 5 },
+  "severity": "high",
+  "risk_score": 73,
+  "interval": "1m",
+  "from": "now-6m",
+  "enabled": true,
+  "tags": ["elk-lab", "ssh"]
+}

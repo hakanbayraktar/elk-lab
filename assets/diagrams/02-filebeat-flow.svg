@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="760" viewBox="0 0 1600 760">
+  <title>Filebeat ile Linux ve Docker logları</title>
+  <desc>Tek Filebeat container'ı auth.log dosyasını ve etiketli container loglarını okur, log_source alanı ekler, Logstash iki ayrı index'e yazar.</desc>
+  <defs>
+    <marker id="ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#344054"/></marker>
+    <style>
+      .bg{fill:#f7fafc}
+      .h1{font:700 40px Arial,sans-serif;fill:#1d2939}
+      .sub{font:400 20px Arial,sans-serif;fill:#475467}
+      .box{stroke-width:3;rx:16}
+      .t{font:700 24px Arial,sans-serif;fill:#ffffff}
+      .s{font:400 18px Arial,sans-serif;fill:#ffffff}
+      .d{font:400 18px Arial,sans-serif;fill:#344054}
+      .lbl{font:700 18px Arial,sans-serif;fill:#344054}
+      .ln{stroke:#344054;stroke-width:3;fill:none;marker-end:url(#ok)}
+      .no{stroke:#bd271e;stroke-width:3;fill:none;stroke-dasharray:8 6}
+    </style>
+  </defs>
+  <rect class="bg" width="1600" height="760"/>
+  <text class="h1" x="60" y="70">Filebeat: iki kaynak, iki index</text>
+  <text class="sub" x="60" y="105">Filebeat her olaya fields.log_source ekler; Logstash index adını bu alandan üretir.</text>
+
+  <rect class="box" x="60" y="160" width="380" height="150" fill="#6b5b95" stroke="#4b3f6b"/>
+  <text class="t" x="80" y="200">/var/log/auth.log</text>
+  <text class="s" x="80" y="235">filestream input</text>
+  <text class="s" x="80" y="265">SSH girişleri, sudo</text>
+
+  <rect class="box" x="60" y="360" width="380" height="150" fill="#6b5b95" stroke="#4b3f6b"/>
+  <text class="t" x="80" y="400">demo-worker, demo-nginx</text>
+  <text class="s" x="80" y="435">label: co.elastic.logs/</text>
+  <text class="s" x="80" y="465">enabled=true</text>
+
+  <rect class="box" x="60" y="560" width="380" height="130" fill="#ffffff" stroke="#bd271e"/>
+  <text class="lbl" x="80" y="600">Jenkins, SonarQube, ...</text>
+  <text class="d" x="80" y="635">etiket yok → toplanmaz</text>
+
+  <rect class="box" x="560" y="240" width="340" height="300" fill="#5aa454" stroke="#3d7a39"/>
+  <text class="t" x="585" y="285">elk-filebeat</text>
+  <text class="s" x="585" y="322">docker autodiscover</text>
+  <text class="s" x="585" y="352">(docker.sock)</text>
+  <text class="s" x="585" y="392">+ container.name</text>
+  <text class="s" x="585" y="422">+ container.image.name</text>
+  <text class="s" x="585" y="462">+ fields.log_source</text>
+  <text class="s" x="585" y="492">okuma konumu: filebeat-data</text>
+
+  <rect class="box" x="1000" y="300" width="250" height="180" fill="#f5a700" stroke="#b37a00"/>
+  <text class="t" x="1020" y="345">Logstash</text>
+  <text class="s" x="1020" y="380">elk-logstash:5044</text>
+  <text class="s" x="1020" y="410">90-output.conf</text>
+
+  <rect class="box" x="1320" y="190" width="240" height="140" fill="#005571" stroke="#003a4d"/>
+  <text class="t" x="1340" y="235">system-logs-*</text>
+  <text class="s" x="1340" y="270">log_source:</text>
+  <text class="s" x="1340" y="298">system</text>
+  <rect class="box" x="1320" y="450" width="240" height="140" fill="#005571" stroke="#003a4d"/>
+  <text class="t" x="1340" y="495">docker-logs-*</text>
+  <text class="s" x="1340" y="530">log_source:</text>
+  <text class="s" x="1340" y="558">docker</text>
+
+  <path class="ln" d="M440,235 C500,235 500,330 556,330"/>
+  <path class="ln" d="M440,435 L556,435"/>
+  <path class="no" d="M440,625 C500,625 520,560 560,545"/>
+  <path class="ln" d="M900,390 L996,390"/>
+  <path class="ln" d="M1250,350 C1290,350 1290,260 1316,260"/>
+  <path class="ln" d="M1250,430 C1290,430 1290,520 1316,520"/>
+</svg>

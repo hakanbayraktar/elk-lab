@@ -1,0 +1,24 @@
+# 1) Linux: sunucunun SSH ve sudo kayitlari
+filebeat.inputs:
+  - type: filestream
+    id: system-auth
+    paths:
+      - /var/log/auth.log
+    fields:
+      log_source: system
+
+# 2) Docker: yalniz co.elastic.logs/enabled=true etiketli container'lar
+filebeat.autodiscover:
+  providers:
+    - type: docker
+      hints.enabled: true
+      hints.default_config:
+        enabled: false
+        type: container
+        paths:
+          - /var/lib/docker/containers/${data.container.id}/*.log
+        fields:
+          log_source: docker
+
+output.logstash:
+  hosts: ["elk-logstash:5044"]

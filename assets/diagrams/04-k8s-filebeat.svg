@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="820" viewBox="0 0 1600 820">
+  <title>Kubernetes pod loglarının toplanması</title>
+  <desc>kind node'unda payment-service pod'u log yazar, Filebeat DaemonSet pod'u /var/log/containers dosyalarını okur, multiline ile hata yığınını birleştirir, Kubernetes metadata ekler ve sunucudaki Logstash'e gateway üzerinden gönderir.</desc>
+  <defs>
+    <marker id="ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#344054"/></marker>
+    <style>
+      .bg{fill:#f7fafc}
+      .h1{font:700 40px Arial,sans-serif;fill:#1d2939}
+      .sub{font:400 20px Arial,sans-serif;fill:#475467}
+      .box{stroke-width:3;rx:16}
+      .t{font:700 24px Arial,sans-serif;fill:#ffffff}
+      .s{font:400 18px Arial,sans-serif;fill:#ffffff}
+      .d{font:400 18px Arial,sans-serif;fill:#344054}
+      .m{font:400 17px 'Courier New',monospace;fill:#1d2939}
+      .lbl{font:700 20px Arial,sans-serif;fill:#344054}
+      .ln{stroke:#344054;stroke-width:3;fill:none;marker-end:url(#ok)}
+      .zone{fill:#ffffff;stroke:#0b6e99;stroke-width:3;stroke-dasharray:10 6}
+    </style>
+  </defs>
+  <rect class="bg" width="1600" height="820"/>
+  <text class="h1" x="60" y="70">Kubernetes: DaemonSet ile pod logları</text>
+  <text class="sub" x="60" y="105">kind node'u bir Docker container'ıdır; Logstash'e kind ağının gateway adresiyle gidilir.</text>
+
+  <rect class="zone" x="40" y="140" width="1000" height="640" rx="20"/>
+  <text class="lbl" x="65" y="180">elk-lab-control-plane (kind node)</text>
+
+  <rect class="box" x="70" y="210" width="400" height="150" fill="#6b5b95" stroke="#4b3f6b"/>
+  <text class="t" x="90" y="250">payment-service pod</text>
+  <text class="s" x="90" y="285">her 4. satırda Python</text>
+  <text class="s" x="90" y="315">hata yığını (4 satır)</text>
+
+  <rect class="box" x="70" y="420" width="400" height="330" fill="#ffffff" stroke="#6b5b95"/>
+  <text class="lbl" x="90" y="455">/var/log/containers/</text>
+  <text class="m" x="90" y="495">[..] ERROR odeme basarisiz</text>
+  <text class="m" x="90" y="525">Traceback (most recent...</text>
+  <text class="m" x="90" y="555">  File "&lt;string&gt;", line 10</text>
+  <text class="m" x="90" y="585">ZeroDivisionError: ...</text>
+  <text class="d" x="90" y="635">containerd 4 ayrı satır yazar</text>
+
+  <rect class="box" x="580" y="210" width="420" height="540" fill="#5aa454" stroke="#3d7a39"/>
+  <text class="t" x="605" y="255">Filebeat (DaemonSet)</text>
+  <text class="s" x="605" y="295">namespace: logging</text>
+  <text class="s" x="605" y="340">1. container parser</text>
+  <text class="s" x="605" y="375">2. multiline '^\['</text>
+  <text class="s" x="605" y="405">   [ ile başlamayan satır</text>
+  <text class="s" x="605" y="435">   öncekine eklenir</text>
+  <text class="s" x="605" y="480">3. add_kubernetes_metadata</text>
+  <text class="s" x="605" y="510">   pod, namespace, node</text>
+  <text class="s" x="605" y="540">   (ServiceAccount + RBAC)</text>
+  <text class="s" x="605" y="585">4. fields.log_source: k8s</text>
+  <text class="s" x="605" y="640">hostPath: /var/log</text>
+
+  <rect class="box" x="1120" y="300" width="200" height="140" fill="#f5a700" stroke="#b37a00"/>
+  <text class="t" x="1140" y="345">Logstash</text>
+  <text class="s" x="1140" y="380">172.18.0.1</text>
+  <text class="s" x="1140" y="408">:5044</text>
+
+  <rect class="box" x="1370" y="300" width="200" height="140" fill="#005571" stroke="#003a4d"/>
+  <text class="t" x="1390" y="345">k8s-logs-*</text>
+  <text class="s" x="1390" y="380">1 belge =</text>
+  <text class="s" x="1390" y="408">4 satır</text>
+
+  <rect class="box" x="1120" y="520" width="450" height="160" fill="#ffffff" stroke="#344054"/>
+  <text class="lbl" x="1140" y="560">kubeconfig: ~/.kube/elk-lab</text>
+  <text class="d" x="1140" y="595">export KUBECONFIG=~/.kube/elk-lab</text>
+  <text class="d" x="1140" y="630">Sunucudaki diğer cluster'ların</text>
+  <text class="d" x="1140" y="658">context'i değişmez.</text>
+
+  <path class="ln" d="M270,360 L270,416"/>
+  <path class="ln" d="M470,585 L576,585"/>
+  <path class="ln" d="M1000,370 L1116,370"/>
+  <path class="ln" d="M1320,370 L1366,370"/>
+</svg>

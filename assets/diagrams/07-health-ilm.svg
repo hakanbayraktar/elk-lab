@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="860" viewBox="0 0 1600 860">
+  <title>Cluster sağlığı ve ILM rollover</title>
+  <desc>Tek node'da replica atanamadığı için cluster yellow olur, replica 0 ile green olur. ILM politikası belge sayısı eşiğinde yeni index açar ve yazma alias'ını taşır.</desc>
+  <defs>
+    <marker id="ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#344054"/></marker>
+    <style>
+      .bg{fill:#f7fafc}
+      .h1{font:700 40px Arial,sans-serif;fill:#1d2939}
+      .h2{font:700 26px Arial,sans-serif;fill:#1d2939}
+      .box{stroke-width:3;rx:14}
+      .t{font:700 22px Arial,sans-serif;fill:#ffffff}
+      .s{font:400 18px Arial,sans-serif;fill:#ffffff}
+      .d{font:400 18px Arial,sans-serif;fill:#344054}
+      .ln{stroke:#344054;stroke-width:3;fill:none;marker-end:url(#ok)}
+      .node{fill:#ffffff;stroke:#344054;stroke-width:3}
+    </style>
+  </defs>
+  <rect class="bg" width="1600" height="860"/>
+  <text class="h1" x="60" y="70">Shard sağlığı ve ILM</text>
+
+  <text class="h2" x="60" y="130">1. Tek node'da yellow → green</text>
+  <rect class="node" x="60" y="160" width="440" height="260" rx="18"/>
+  <text class="d" x="80" y="195">node-1</text>
+  <rect class="box" x="80" y="215" width="190" height="90" fill="#5aa454" stroke="#3d7a39"/>
+  <text class="t" x="100" y="255">primary 0</text>
+  <text class="s" x="100" y="285">STARTED</text>
+  <rect class="box" x="290" y="215" width="190" height="90" fill="#f5a700" stroke="#b37a00" stroke-dasharray="8 6"/>
+  <text class="t" x="310" y="255">replica 0</text>
+  <text class="s" x="310" y="285">UNASSIGNED</text>
+  <text class="d" x="80" y="350">Replica, primary ile aynı</text>
+  <text class="d" x="80" y="378">node'a konamaz → yellow</text>
+  <path class="ln" d="M500,290 L596,290"/>
+  <text class="d" x="510" y="270">replicas: 0</text>
+  <rect class="node" x="600" y="160" width="300" height="260" rx="18"/>
+  <text class="d" x="620" y="195">node-1</text>
+  <rect class="box" x="620" y="215" width="190" height="90" fill="#5aa454" stroke="#3d7a39"/>
+  <text class="t" x="640" y="255">primary 0</text>
+  <text class="s" x="640" y="285">STARTED</text>
+  <text class="d" x="620" y="350">→ green</text>
+  <text class="d" x="620" y="378">(gerçekte: 2. node ekle)</text>
+
+  <text class="h2" x="980" y="130">2. Flood stage kilidi</text>
+  <rect class="box" x="980" y="160" width="560" height="260" fill="#ffffff" stroke="#bd271e"/>
+  <text class="d" x="1000" y="200">disk %85  low    → yeni shard almaz</text>
+  <text class="d" x="1000" y="235">disk %90  high   → shard taşır</text>
+  <text class="d" x="1000" y="270">disk %95  flood  → read_only_allow_delete</text>
+  <text class="d" x="1000" y="320" fill="#bd271e">POST health-demo/_doc → HTTP 429</text>
+  <text class="d" x="1000" y="370">kilit: null ile kalkar, disk boşalınca kendisi kalkar</text>
+
+  <text class="h2" x="60" y="490">3. ILM rollover (politika: max_docs 3, delete 10m)</text>
+  <rect class="box" x="60" y="530" width="300" height="120" fill="#005571" stroke="#003a4d"/>
+  <text class="t" x="80" y="575">ilm-demo-000001</text>
+  <text class="s" x="80" y="610">4 belge → eşik aşıldı</text>
+  <rect class="box" x="520" y="530" width="300" height="120" fill="#0b6e99" stroke="#074d6b"/>
+  <text class="t" x="540" y="575">ilm-demo-000002</text>
+  <text class="s" x="540" y="610">yeni yazma index'i</text>
+  <path class="ln" d="M360,590 L516,590"/>
+  <text class="d" x="375" y="575">rollover</text>
+  <rect class="box" x="980" y="530" width="300" height="120" fill="#6b5b95" stroke="#4b3f6b"/>
+  <text class="t" x="1000" y="575">delete fazı</text>
+  <text class="s" x="1000" y="610">000001, 10 dk sonra</text>
+  <path class="ln" d="M300,530 C300,505 1130,505 1130,526"/>
+
+  <rect class="box" x="520" y="700" width="300" height="100" fill="#ffffff" stroke="#344054"/>
+  <text class="d" x="540" y="740">alias: ilm-demo</text>
+  <text class="d" x="540" y="770">is_write_index → 000002</text>
+  <path class="ln" d="M670,700 L670,654"/>
+  <text class="d" x="60" y="830">Uygulama hep "ilm-demo" alias'ına yazar; hangi index'e gittiğini bilmez.</text>
+</svg>

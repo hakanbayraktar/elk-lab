@@ -1,0 +1,43 @@
+# Her 3 saniyede bir log yazar; her 4. satirda cok satirli Python hata yigini basar.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+    spec:
+      containers:
+        - name: payment
+          image: python:3.12-alpine
+          command:
+            - python3
+            - -u
+            - -c
+            - |
+              import random, sys, time, traceback
+              from datetime import datetime, timezone
+              n = 0
+              while True:
+                  n += 1
+                  now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+                  order = random.randint(1000, 9999)
+                  if n % 4 == 0:
+                      try:
+                          1 / 0
+                      except ZeroDivisionError:
+                          print(f"[{now}] ERROR odeme basarisiz order={order}")
+                          traceback.print_exc(file=sys.stdout)
+                  else:
+                      print(f"[{now}] INFO odeme tamamlandi order={order}")
+                  time.sleep(3)
+          resources:
+            requests: { cpu: 20m, memory: 32Mi }
+            limits: { cpu: 100m, memory: 64Mi }

@@ -3,6 +3,9 @@
 *.log
 __pycache__/
 *.pyc
+.env
+# LAB-03 bu klasore grok dosyasini kopyalar; repoya girmez
+01-elk-stack-setup/pipeline/50-grok.conf
 
 # AI & Agent internal files
 .agents/

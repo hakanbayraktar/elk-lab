@@ -1,0 +1,23 @@
+name: elk-filebeat
+
+services:
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.19.25
+    container_name: elk-filebeat
+    user: root
+    command: ["filebeat", "-e", "--strict.perms=false"]
+    volumes:
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - filebeat-data:/usr/share/filebeat/data
+    restart: unless-stopped
+
+volumes:
+  filebeat-data:
+
+networks:
+  default:
+    name: elk-net
+    external: true

@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="800" viewBox="0 0 1600 800">
+  <title>Detection rule ve alert akışı</title>
+  <desc>SSH denemeleri auth.log ile system-logs index'ine, web saldırıları demo-nginx ile docker-logs index'ine gider; Kibana her dakika iki kuralı çalıştırır ve eşleşmeleri alert olarak yazar.</desc>
+  <defs>
+    <marker id="ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#344054"/></marker>
+    <style>
+      .bg{fill:#f7fafc}
+      .h1{font:700 40px Arial,sans-serif;fill:#1d2939}
+      .sub{font:400 20px Arial,sans-serif;fill:#475467}
+      .box{stroke-width:3;rx:16}
+      .t{font:700 24px Arial,sans-serif;fill:#ffffff}
+      .s{font:400 18px Arial,sans-serif;fill:#ffffff}
+      .d{font:400 18px Arial,sans-serif;fill:#344054}
+      .ln{stroke:#344054;stroke-width:3;fill:none;marker-end:url(#ok)}
+    </style>
+  </defs>
+  <rect class="bg" width="1600" height="800"/>
+  <text class="h1" x="60" y="70">SIEM: kural her dakika çalışır, eşleşme alert olur</text>
+  <text class="sub" x="60" y="105">Kurallar LAB-03'ün grok ile ürettiği alanları kullanır.</text>
+
+  <rect class="box" x="60" y="170" width="330" height="170" fill="#bd271e" stroke="#8a1c16"/>
+  <text class="t" x="80" y="212">SSH denemeleri</text>
+  <text class="s" x="80" y="248">ssh saldirgan@localhost</text>
+  <text class="s" x="80" y="278">x 6 + internetten gelen</text>
+  <text class="s" x="80" y="308">gerçek denemeler</text>
+  <rect class="box" x="60" y="480" width="330" height="170" fill="#bd271e" stroke="#8a1c16"/>
+  <text class="t" x="80" y="522">Web saldırısı</text>
+  <text class="s" x="80" y="558">/../../etc/passwd, /.env</text>
+  <text class="s" x="80" y="588">/.git/config, UNION SELECT</text>
+  <text class="s" x="80" y="618">→ demo-nginx :8081</text>
+
+  <rect class="box" x="470" y="190" width="300" height="130" fill="#005571" stroke="#003a4d"/>
+  <text class="t" x="490" y="235">system-logs-*</text>
+  <text class="s" x="490" y="270">source.ip, user.name</text>
+  <text class="s" x="490" y="298">event.outcome: failure</text>
+  <rect class="box" x="470" y="500" width="300" height="130" fill="#005571" stroke="#003a4d"/>
+  <text class="t" x="490" y="545">docker-logs-*</text>
+  <text class="s" x="490" y="580">url.original</text>
+  <text class="s" x="490" y="608">http.response.status_code</text>
+
+  <rect class="box" x="860" y="170" width="380" height="170" fill="#0b6e99" stroke="#074d6b"/>
+  <text class="t" x="880" y="212">threshold kuralı</text>
+  <text class="s" x="880" y="248">aynı source.ip, son 6 dk</text>
+  <text class="s" x="880" y="278">en az 5 başarısız giriş</text>
+  <text class="s" x="880" y="308">severity: high</text>
+  <rect class="box" x="860" y="480" width="380" height="170" fill="#0b6e99" stroke="#074d6b"/>
+  <text class="t" x="880" y="522">query kuralı</text>
+  <text class="s" x="880" y="558">url.original.keyword :</text>
+  <text class="s" x="880" y="588">*passwd* / *.env* / *UNION*</text>
+  <text class="s" x="880" y="618">severity: medium</text>
+
+  <rect class="box" x="1320" y="320" width="240" height="190" fill="#f5a700" stroke="#b37a00"/>
+  <text class="t" x="1340" y="365">Alerts</text>
+  <text class="s" x="1340" y="400">Security &gt; Alerts</text>
+  <text class="s" x="1340" y="430">IP başına 1 alert</text>
+  <text class="s" x="1340" y="460">istek başına 1 alert</text>
+
+  <path class="ln" d="M390,255 L466,255"/>
+  <path class="ln" d="M390,565 L466,565"/>
+  <path class="ln" d="M770,255 L856,255"/>
+  <path class="ln" d="M770,565 L856,565"/>
+  <path class="ln" d="M1240,255 C1290,255 1290,380 1316,390"/>
+  <path class="ln" d="M1240,565 C1290,565 1290,450 1316,440"/>
+  <text class="d" x="860" y="420">Kibana kuralları her dakika (interval: 1m) çalıştırır</text>
+</svg>

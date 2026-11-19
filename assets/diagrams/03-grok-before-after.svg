@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="860" viewBox="0 0 1600 860">
+  <title>Grok ile log ayrıştırma: önce ve sonra</title>
+  <desc>Nginx erişim satırı ve SSH satırı grok öncesi tek message alanıdır; grok sonrası http, url, source, user ve event alanlarına ayrılır.</desc>
+  <defs>
+    <marker id="ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#344054"/></marker>
+    <style>
+      .bg{fill:#f7fafc}
+      .h1{font:700 40px Arial,sans-serif;fill:#1d2939}
+      .sub{font:400 20px Arial,sans-serif;fill:#475467}
+      .card{fill:#ffffff;stroke-width:3;rx:16}
+      .hd{font:700 24px Arial,sans-serif}
+      .m{font:400 18px 'Courier New',monospace;fill:#1d2939}
+      .k{font:700 18px 'Courier New',monospace;fill:#005571}
+      .v{font:400 18px 'Courier New',monospace;fill:#bd271e}
+      .lbl{font:700 22px Arial,sans-serif;fill:#ffffff}
+      .ln{stroke:#344054;stroke-width:4;fill:none;marker-end:url(#ok)}
+    </style>
+  </defs>
+  <rect class="bg" width="1600" height="860"/>
+  <text class="h1" x="60" y="70">Grok: tek satırdan alanlara</text>
+  <text class="sub" x="60" y="105">50-grok.conf, LAB-01'in pipeline klasörüne kopyalanınca Logstash yeniden başlamadan yükler.</text>
+
+  <text class="hd" x="60" y="160" fill="#6b5b95">ÖNCE (LAB-02)</text>
+  <rect class="card" x="60" y="180" width="620" height="270" stroke="#6b5b95"/>
+  <text class="k" x="85" y="225">message:</text>
+  <text class="m" x="85" y="260">"172.31.0.1 - - [19/Nov/2026:</text>
+  <text class="m" x="85" y="290"> 16:05:12 +0000] "GET /urunler</text>
+  <text class="m" x="85" y="320"> HTTP/1.1" 404 153 "-"</text>
+  <text class="m" x="85" y="350"> "Mozilla/5.0" "-""</text>
+  <text class="m" x="85" y="400" fill="#475467">→ "404 dönen istekler" sorulamaz</text>
+
+  <rect class="card" x="60" y="490" width="620" height="300" stroke="#6b5b95"/>
+  <text class="k" x="85" y="535">message:</text>
+  <text class="m" x="85" y="570">"2026-11-19T18:50:40+03:00</text>
+  <text class="m" x="85" y="600"> student103 sshd[19733]:</text>
+  <text class="m" x="85" y="630"> Invalid user hacker</text>
+  <text class="m" x="85" y="660"> from 127.0.0.1 port 41020"</text>
+  <text class="m" x="85" y="720" fill="#475467">→ "hangi IP kaç kez denedi"</text>
+  <text class="m" x="85" y="750" fill="#475467">  sorulamaz</text>
+
+  <rect x="720" y="380" width="160" height="80" rx="14" fill="#f5a700"/>
+  <text class="lbl" x="755" y="430">grok</text>
+  <path class="ln" d="M680,315 C700,315 700,400 716,410"/>
+  <path class="ln" d="M680,640 C700,640 700,450 716,440"/>
+  <path class="ln" d="M880,410 C900,400 900,315 916,315"/>
+  <path class="ln" d="M880,440 C900,450 900,640 916,640"/>
+
+  <text class="hd" x="920" y="160" fill="#5aa454">SONRA (LAB-03)</text>
+  <rect class="card" x="920" y="180" width="620" height="270" stroke="#5aa454"/>
+  <text class="k" x="945" y="225">source.address</text><text class="v" x="1275" y="225">172.31.0.1</text>
+  <text class="k" x="945" y="260">http.request.method</text><text class="v" x="1275" y="260">GET</text>
+  <text class="k" x="945" y="295">url.original</text><text class="v" x="1275" y="295">/urunler</text>
+  <text class="k" x="945" y="330">http.response.status_code</text><text class="v" x="1275" y="330">404</text>
+  <text class="k" x="945" y="365">http.response.body.bytes</text><text class="v" x="1275" y="365">153</text>
+  <text class="k" x="945" y="400">user_agent.original</text><text class="v" x="1275" y="400">Mozilla/5.0</text>
+
+  <rect class="card" x="920" y="490" width="620" height="300" stroke="#5aa454"/>
+  <text class="k" x="945" y="535">@timestamp</text><text class="v" x="1215" y="535">15:50:40Z (satırdan)</text>
+  <text class="k" x="945" y="570">process.name</text><text class="v" x="1215" y="570">sshd</text>
+  <text class="k" x="945" y="605">user.name</text><text class="v" x="1215" y="605">hacker</text>
+  <text class="k" x="945" y="640">source.ip</text><text class="v" x="1215" y="640">127.0.0.1</text>
+  <text class="k" x="945" y="675">event.category</text><text class="v" x="1215" y="675">authentication</text>
+  <text class="k" x="945" y="710">event.outcome</text><text class="v" x="1215" y="710">failure</text>
+  <text class="m" x="945" y="760" fill="#475467">→ LAB-06 kuralları bu alanları kullanır</text>
+</svg>

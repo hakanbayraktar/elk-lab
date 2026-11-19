@@ -1,0 +1,15 @@
+{
+  "rule_id": "elk-lab-web-attack",
+  "name": "Web saldırısı: dizin atlatma, gizli dosya veya SQL injection",
+  "description": "demo-nginx erişim logunda /etc/passwd, .env, .git veya UNION SELECT içeren istek.",
+  "type": "query",
+  "index": ["docker-logs-*"],
+  "language": "kuery",
+  "query": "container.name : \"demo-nginx\" and (url.original.keyword : *passwd* or url.original.keyword : *.env* or url.original.keyword : *.git* or url.original.keyword : *UNION*)",
+  "severity": "medium",
+  "risk_score": 47,
+  "interval": "1m",
+  "from": "now-6m",
+  "enabled": true,
+  "tags": ["elk-lab", "web"]
+}
