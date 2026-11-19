@@ -6,13 +6,13 @@
 
 ## Amaç
 
-- Nginx erişim satırını ve SSH satırını grok ile alanlara ayırmak.
-- Olayın zamanını log satırından almak (`date` filtresi).
+- Nginx erişim satırını ve SSH satırını grok ile alanlara ayırmak; olayın zamanını satırdan almak.
 - Ayrıştırmadan önceki ve sonraki belgeyi karşılaştırmak.
+- Ayrışan alanlarla Discover'da KQL, Dev Tools'ta ES|QL sorgusu yazmak ve Lens ile pano kurmak.
 
 ## Ön Koşullar
 
-- LAB-ELK-01 stack'i ve LAB-ELK-03 Filebeat'i çalışıyor olmalıdır.
+- LAB-ELK-01 stack'i ve LAB-ELK-03 Filebeat'i çalışıyor olmalıdır. LAB-ELK-03'te oluşturulan `Sistem Logları` ve `Docker Logları` data view'ları Adım 7-8'de kullanılır.
 - `8081` portu boş olmalıdır.
 
 ## Mimari ve Çalışma Modeli
@@ -210,6 +210,73 @@ curl -s -u elastic:'DevOps2026!' "http://localhost:9200/system-logs-*/_search?si
 ```
 
 Grok yalnız eklendikten sonra gelen satırlara uygulanır; daha önce yazılmış belgeler değişmez.
+
+### 7. Ayrışan alanlarla arama
+
+Alanlar ayrıldığı için artık değere göre arayabilir ve sayabilirsiniz.
+
+**Discover'da KQL:**
+
+1. **Analytics > Discover**'da data view olarak (5) **Sistem Logları**'nı seçin, zaman aralığını **Last 1 hour** yapın.
+2. Arama çubuğuna (6) `event.outcome : "failure"` yazıp Enter'a basın.
+3. Sol listede **source.ip** alanına (7) tıklayın: Kibana bu alanın en sık değerlerini ve yüzdesini gösterir. LAB-ELK-03'te aynı veriyle bu mümkün değildi.
+
+   ![Discover ayrışmış alanlar](../assets/screenshots/LAB-ELK-04/02-discover-fields.png){width=75%}
+
+**Dev Tools'ta ES|QL:** Başarısız girişleri IP'ye göre sayın. Sunucunuz internete açık olduğu için listede sizin denemenizin (`127.0.0.1`) yanında başka IP'ler de olabilir; sayılar her sunucuda farklıdır:
+
+```http
+POST _query?format=txt
+{
+  "query": "FROM system-logs-* | WHERE event.outcome == \"failure\" | STATS deneme = COUNT(*) BY source.ip | SORT deneme DESC | LIMIT 5"
+}
+```
+
+Panoda daha fazla veri görünsün diye Nginx'e farklı adreslere istek atın. `/` (ana sayfa) `200`, diğerleri `404` döner:
+
+```bash
+for p in / /urunler /sepet / /iletisim /urunler /; do
+  curl -s -o /dev/null -w "%{http_code} $p\n" "http://localhost:8081$p"
+done
+```
+
+Nginx isteklerini durum koduna göre sayın. `IS NOT NULL` koşulu, grok eklenmeden önce yazılmış (alanları olmayan) satırları dışarıda bırakır:
+
+```http
+POST _query?format=txt
+{
+  "query": "FROM docker-logs-* | WHERE container.name == \"demo-nginx\" AND http.response.status_code IS NOT NULL | STATS istek = COUNT(*) BY http.response.status_code | SORT istek DESC"
+}
+```
+
+### 8. Lens ile pano
+
+İki panelli bir pano kurun: SSH deneyen IP'ler ve Nginx'te en çok istenen adresler.
+
+1. **Analytics > Dashboards > Create dashboard > Create visualization**'a tıklayın.
+2. Data view (8): **Sistem Logları**. Zaman aralığı (9): **Last 1 hour**. Arama çubuğu (10): `event.outcome : "failure"`.
+3. Sol listede `source.ip` arayıp **source.ip.keyword** alanını (11) ortaya sürükleyin. Lens IP başına sayıyı çubuk grafik olarak çizer. Gruplama için `.keyword` hâli kullanılır: metin alanı kelimelere bölünerek saklanır, keyword hâli değeri bölmeden tutar ve sayılabilir.
+4. **Save and return**'e (12) tıklayın.
+
+   ![Lens SSH paneli](../assets/screenshots/LAB-ELK-04/03-lens-ssh.png){width=75%}
+
+5. Panoda tekrar **Create visualization**'a tıklayın. Data view (13): **Docker Logları**. Arama çubuğu (14): `container.name : "demo-nginx" and http.response.status_code >= 200`.
+6. **url.original.keyword** alanını (15) ortaya sürükleyin; Lens adres başına istek sayısını çizer. **Save and return**'e (16) tıklayın.
+
+   ![Lens Nginx paneli](../assets/screenshots/LAB-ELK-04/04-lens-nginx.png){width=75%}
+
+7. Panoda sağ üstteki **Save**'e tıklayın, başlığa (17) `SSH ve Nginx` yazıp **Save**'e (18) tıklayın.
+
+   ![Panoyu kaydetme](../assets/screenshots/LAB-ELK-04/05-save-dashboard.png){width=75%}
+
+**Aynı panoyu betikle kurma.** `scripts/create_dashboard.py`, arayüzde seçtiğiniz data view'ları, sorguları ve alanları Kibana API'sine gönderip aynı panoyu `SSH ve Nginx (betik)` adıyla kurar. Panolar çoğaltılacaksa ya da Git'te saklanacaksa bu yol kullanılır:
+
+```bash
+cd ~/elk-lab/04-logstash-grok
+python3 scripts/create_dashboard.py
+```
+
+**Analytics > Dashboards**'ta iki panoyu yan yana açın; aynı sayıları gösterirler.
 
 ## Temizlik
 

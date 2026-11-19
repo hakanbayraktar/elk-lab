@@ -1,41 +1,42 @@
-# LAB-ELK-02 — Kibana: Discover, Lens ve Hazır Panolar
+# LAB-ELK-02 — Örnek Veriyle Kibana: Discover, KQL, ES|QL ve Hazır Panolar
 
 | Profil / Araçlar | Açık Portlar |
 |---|---|
-| Kibana 8.19 (Discover, Lens, Dashboards), `python3` | 15601 (Kibana) |
+| Kibana 8.19 (Discover, Dashboards, Dev Tools), `python3` | 15601 (Kibana) |
 
 ## Amaç
 
-- Hazır demo verisini ve üç operasyon panosunu tek komutla kurmak.
-- Kendi logunuz için data view oluşturup Discover'da KQL ile aramak.
-- Lens ile bir grafik çizip panoya kaydetmek.
+- Son 24 saate yayılmış örnek uygulama, güvenlik, Kubernetes ve CI/CD loglarını yüklemek.
+- Hazır panoları açıp okumak.
+- Discover'da KQL ile, Discover ve Dev Tools'ta ES|QL ile logları sorgulamak.
 
 ## Ön Koşullar
 
 - LAB-ELK-01 stack'i çalışıyor olmalıdır.
-- Adım 2-4 için LAB-ELK-04 sonrası `system-logs-*` index'inde ayrışmış SSH satırları olmalıdır.
 - Kibana adresi: `echo "https://$(hostname)-kibana.devopsatolyesi.com"`, kullanıcı `elastic`, parola `DevOps2026!`.
 
 ## Mimari ve Çalışma Modeli
 
+Kendi loglarınızı toplamadan önce aramayı ve panoları zengin bir veriyle öğrenmek için örnek veri kullanılır. Veri sentetiktir ama gerçek loglara benzer: servis adları, HTTP durum kodları, yanıt süreleri, SSH denemeleri, pod olayları, pipeline sonuçları.
+
 | Kavram | Ne işe yarar |
 |---|---|
-| **Data view** | Kibana'ya hangi index'lerin okunacağını söyler (`system-logs-*` gibi) ve zaman alanını seçer. Discover, Lens ve panolar data view üzerinden çalışır. |
-| **Discover** | Belgeleri tek tek görür, KQL ile filtrelersiniz. |
-| **KQL** | Arama dili: `alan : değer`, `and`, `or`, `not`, `>=`, `*`. |
-| **Lens** | Alanı sürükleyip bırakarak grafik çizer. |
-| **Dashboard** | Birden çok Lens panelini tek ekranda toplar; zaman aralığı ve filtre hepsine birlikte uygulanır. |
+| **Data view** | Kibana'ya hangi index'lerin okunacağını ve zaman alanını söyler. Discover ve panolar data view üzerinden çalışır. |
+| **Discover** | Belgeleri tek tek görür; arama çubuğuna yazdığınız sorguyla süzersiniz. |
+| **KQL** (Kibana Query Language) | Discover'ın arama dili. Belgeleri **süzer**: `alan : değer`, `and`, `or`, `not`, `>=`, `*`. Sonuç belge listesidir. |
+| **ES\|QL** (Elasticsearch Query Language) | Komutları `\|` ile zincirleyen sorgu dili. Süzmenin yanında **hesaplar**: gruplar, sayar, ortalama ve yüzdelik alır, sıralar. Sonuç tablodur. |
+| **Dashboard** | Birden çok paneli tek ekranda toplar; zaman aralığı ve filtre bütün panellere birlikte uygulanır. |
 
-Hazır panolar `scripts/` klasöründeki iki betikle kurulur:
+Veriyi ve panoları `scripts/` klasöründeki iki betik kurar:
 
 | Betik | Ne yapar |
 |---|---|
-| `generate_demo_data.py` | Son 24 saate yayılmış sentetik uygulama, güvenlik, Kubernetes ve CI/CD logu üretir; yalnız `demo-*` index'lerine yazar. Gerçek lab logları (`system-logs-*` vb.) ile karışmaz. |
-| `create_dashboards.py` | Data view'ları ve dört panoyu Kibana API'siyle kurar; panelleri `lens_builder.py` ile üretip göndermeden önce doğrular. |
+| `generate_demo_data.py` | Dört index'i (`demo-app-logs`, `demo-security-logs`, `demo-k8s-logs`, `demo-cicd-logs`) silip yeniden oluşturur ve son 24 saate yayılmış belgeler yazar. Alan türlerini (sayı, IP, keyword) baştan belirler; böylece gruplama ve aralık sorguları doğru çalışır. Sabit bir rastgele tohum kullandığı için sayılar her kurulumda aynıdır. |
+| `create_dashboards.py` | Dört data view'ı ve üç panoyu Kibana API'siyle kurar. Panelleri `lens_builder.py` ile üretir ve göndermeden önce doğrular. |
 
 ## Adım Adım Uygulama Rehberi
 
-### 1. Hazır panoları kurma
+### 1. Örnek veriyi ve panoları kurma
 
 ```bash
 cd ~/elk-lab/02-kibana-sample-data
@@ -58,98 +59,146 @@ python3 scripts/create_dashboards.py
 [+] Data view: Demo Güvenlik Logları (demo-security-logs)
 [+] Data view: Demo Kubernetes Olayları (demo-k8s-logs)
 [+] Data view: Demo CI/CD Pipeline Logları (demo-cicd-logs)
-[+] Data view: Betik: Sistem Logları (system-logs-*)
 [+] Pano: Uygulama Trafiği ve Hatalar  ->  /app/dashboards#/view/demo-app-overview
 [+] Pano: Güvenlik: SSH ve Firewall  ->  /app/dashboards#/view/demo-security-overview
 [+] Pano: Kubernetes ve CI/CD  ->  /app/dashboards#/view/demo-k8s-cicd-overview
-[+] Pano: SSH ve Hatalar (betik)  ->  /app/dashboards#/view/ssh-errors-script
 ```
 
-Kibana menüsünden **Analytics > Dashboards**'u açın. Dört pano listededir (1); birine tıklayın.
+### 2. Hazır panoları okuma
+
+Kibana menüsünden **Analytics > Dashboards**'u açın. Üç pano listededir (1).
 
 ![Hazır panolar](../assets/screenshots/LAB-ELK-02/01-dashboard-list.png){width=75%}
+
+**Uygulama Trafiği ve Hatalar** panosunu açın. Panolar açılışta son 24 saati gösterir (2). Üst sıradaki sayı kartları (3) genel durumu, altındaki grafikler ayrıntıyı verir:
+
+![Uygulama panosu](../assets/screenshots/LAB-ELK-02/02-app-dashboard.png){width=75%}
 
 | Pano | Cevapladığı sorular |
 |---|---|
 | Uygulama Trafiği ve Hatalar | Kaç istek geldi, kaçı 5xx, hangi servis en çok hata veriyor, hangi endpoint yavaş? |
 | Güvenlik: SSH ve Firewall | Kaç başarısız SSH girişi var, hangi IP'ler deniyor, hangi kullanıcı adları deneniyor? |
 | Kubernetes ve CI/CD | Kaç OOMKilled var, hangi namespace'te sorun var, pipeline'ların yüzde kaçı başarısız, hangi stage yavaş? |
-| SSH ve Hatalar (betik) | Adım 4'te elle kuracağınız panonun betikle kurulmuş hâli: hangi IP'ler SSH ile deniyor, hangi servis 5xx veriyor? |
 
-Panolar açılışta son 24 saati gösterir. Sağ üstteki zaman seçicisini değiştirince bütün paneller birlikte güncellenir.
+Zaman seçicisini (2) **Last 1 hour** yapın: bütün paneller aynı anda yalnız son bir saati gösterir. Bir grafikteki çubuğa tıklarsanız o değer bütün panoya filtre olarak eklenir; filtreyi üstteki çubuktan kaldırabilirsiniz.
 
-### 2. Data view oluşturma
-
-Kendi SSH loglarınız için bir data view oluşturun. Logstash her gün yeni bir index açar (`system-logs-2026.11.19`, `system-logs-2026.11.20`…). Index pattern'deki `*`, bunların hepsini tek data view altında toplar. **Timestamp field**, Kibana'nın sağ üstteki zaman seçicisiyle hangi alana göre filtreleyeceğini belirler; seçilmezse "son 24 saat" gibi filtreler çalışmaz.
-
-1. Menüden **Management > Stack Management > Data Views**'a gidin ve **Create data view**'a (2) tıklayın.
-
-   ![Create data view](../assets/screenshots/LAB-ELK-02/02-create-data-view.png){width=75%}
-
-2. **Name** (3): `Sistem Logları`
-3. **Index pattern** (4): `system-logs-*`. Sağda eşleşen index görünür. **Timestamp field** `@timestamp` kalır.
-4. **Save data view to Kibana**'ya (5) tıklayın.
-
-   ![Data view formu](../assets/screenshots/LAB-ELK-02/03-data-view-form.png){width=75%}
-
-### 3. Discover ve KQL
+### 3. Discover'da KQL ile arama
 
 1. Menüden **Analytics > Discover**'ı açın.
-2. Sol üstteki data view seçicisinden (6) **Sistem Logları**'nı seçin (listede görünmüyorsa arama kutusuna `Sistem` yazın).
-3. Sağ üstten zaman aralığını **Last 24 hours** yapın.
-4. Arama çubuğuna (7) aşağıdaki KQL sorgusunu yazıp Enter'a basın. `event.outcome` alanını Logstash'teki grok filtresi üretti; başarısız SSH girişlerinde `failure` değerini alır. Sorgu, `auth.log`'daki binlerce satırdan yalnız başarısız girişleri listeler:
+2. Data view seçicisinden (4) **Demo Uygulama Logları**'nı seçin.
+3. Zaman aralığını (5) **Last 24 hours** yapın.
+4. Arama çubuğuna (6) aşağıdaki sorguyu yazıp Enter'a basın. Belge sayısı (7) ve zaman grafiği yalnız 5xx hatalarını gösterecek şekilde değişir:
 
 ```text
-event.outcome : "failure"
+http.response.status_code >= 500
 ```
 
-![Discover KQL](../assets/screenshots/LAB-ELK-02/04-discover-kql.png){width=75%}
+![Discover KQL](../assets/screenshots/LAB-ELK-02/03-discover-kql.png){width=75%}
 
-Başka sorgular deneyin:
+Başka sorgular deneyin. Her birinde sağ üstteki belge sayısının nasıl değiştiğine bakın:
 
 | Soru | KQL |
 |---|---|
-| `root` ile denenen girişler | `event.outcome : "failure" and user.name : "root"` |
-| Kendi denemeniz | `source.ip : "127.0.0.1"` |
-| SSH dışındaki kayıtlar | `not process.name : "sshd"` |
+| Ödeme servisindeki 5xx hataları | `service.name : "payment-service" and http.response.status_code >= 500` |
+| `/api/v1/` ile başlayan istekler | `url.original : /api/v1/*` |
+| 1 saniyeden yavaş istekler | `event.duration_ms > 1000` |
+| Başarılı olmayan her şey | `not log.level : "INFO"` |
 
-### 4. Lens ile grafik ve pano
+KQL belgeleri süzer, ama "hangi servis kaç hata verdi" gibi sayım yapamaz. Bunun için ES|QL kullanılır.
 
-1. **Analytics > Dashboards > Create dashboard**'a tıklayın, sonra **Create visualization**'a (8) tıklayın.
+### 4. ES|QL ile hesaplama
 
-   ![Create visualization](../assets/screenshots/LAB-ELK-02/05-create-visualization.png){width=75%}
+ES|QL sorgusu bir kaynakla (`FROM`) başlar ve her `|` sonrası komut bir öncekinin sonucunu işler: `WHERE` süzer, `STATS ... BY` gruplayıp hesaplar, `SORT` sıralar, `LIMIT` satır sayısını sınırlar.
 
-2. Sol üstte data view olarak **Sistem Logları**'nı seçin (9).
-3. Arama çubuğuna (10) `event.outcome : "failure"` yazıp Enter'a basın.
-4. Sol listede `source.ip` arayın ve **source.ip.keyword** alanını (11) ortadaki boş alana sürükleyin. Lens, IP başına başarısız giriş sayısını çubuk grafik olarak çizer. Gruplama için `.keyword` hâli kullanılır: metin alanı kelimelere bölünerek saklanır, keyword hâli ise değeri bölmeden tutar ve sayılabilir.
-5. Sağ üstteki **Save and return**'e (12) tıklayın.
+**Discover'da:**
 
-   ![Lens](../assets/screenshots/LAB-ELK-02/06-lens-drag-field.png){width=75%}
+1. Discover'da üstteki **Try ES|QL**'e (8, önceki görüntüde) tıklayın. Arama çubuğu ES|QL sorgu kutusuna dönüşür.
+2. Sorgu kutusuna (9) aşağıdaki sorguyu yazıp sağ üstteki **Refresh**'e (10) basın ya da `Ctrl+Enter` (Mac'te `Cmd+Enter`) kullanın. Sonuç belge listesi yerine tablo olarak gelir:
 
-Şimdi aynı panoya, betiğin kurduğu **Uygulama Trafiği ve Hatalar** panosundaki "En çok 5xx veren servisler" panelini elle ekleyin:
+```text
+FROM demo-app-logs
+| WHERE http.response.status_code >= 500
+| STATS hata = COUNT(*) BY service.name
+| SORT hata DESC
+```
 
-6. Panoda tekrar **Create visualization**'a tıklayın.
-7. Data view olarak **Demo Uygulama Logları**'nı (13) seçin. Zaman aralığını (14) **Last 24 hours** yapın; demo verisi son 24 saate yayılmıştır.
-8. Arama çubuğuna (15) `http.response.status_code >= 500` yazıp Enter'a basın.
-9. **service.name** alanını (16) ortaya sürükleyin. Lens servis başına 5xx sayısını çubuk grafik olarak çizer.
-10. **Save and return**'e (17) tıklayın.
+![Discover ES|QL](../assets/screenshots/LAB-ELK-02/04-discover-esql.png){width=75%}
 
-   ![İkinci panel](../assets/screenshots/LAB-ELK-02/07-lens-5xx-panel.png){width=75%}
+Discover, sağ üstteki zaman aralığını (son 24 saat) ES|QL sorgusuna da uygular. Örnek veri tam 24 saate yayıldığı için en eski birkaç belge bu aralığın dışında kalır; bu yüzden Discover'daki sayılar aşağıda Dev Tools'ta göreceğiniz sayılardan biraz küçük olabilir. Discover'dan çıkıp **Classic**'e dönmek için sağ üstteki **Switch to classic**'e tıklayın.
 
-11. Panoda sağ üstteki **Save**'e tıklayın, başlığa (18) `SSH ve Hatalar` yazıp **Save**'e (19) tıklayın.
+**Dev Tools'ta:** Aynı sorgular `_query` API'siyle de çalışır; `format=txt` sonucu tablo olarak verir. Dev Tools'taki sorguda zaman filtresi yoktur, bütün belgeler sayılır. Menüden **Management > Dev Tools**'u açıp istekleri tek tek çalıştırın.
 
-   ![Panoyu kaydetme](../assets/screenshots/LAB-ELK-02/08-save-dashboard.png){width=75%}
+Servis başına 5xx hata sayısı (Discover'daki sorgunun aynısı):
 
-Kendi kurduğunuz **SSH ve Hatalar** panosunu betiğin kurduğu **SSH ve Hatalar (betik)** panosuyla yan yana açın: iki panel de aynı sayıları gösterir. Betik, sizin arayüzde seçtiğiniz data view'ı, sorguyu ve alanı Kibana API'sine gönderir. Birinci paneldeki IP'ler ise sunucunuza internetten SSH ile girmeye çalışan gerçek adreslerdir.
+```http
+POST _query?format=txt
+{
+  "query": "FROM demo-app-logs | WHERE http.response.status_code >= 500 | STATS hata = COUNT(*) BY service.name | SORT hata DESC"
+}
+```
+
+```text
+     hata      | service.name  
+---------------+---------------
+82             |auth-service   
+80             |payment-service
+79             |order-service  
+75             |api-gateway    
+67             |frontend       
+```
+
+En çok başarısız SSH girişi deneyen 5 IP. Sorgunun içindeki çift tırnaklar JSON içinde olduğu için `\"` ile yazılır:
+
+```http
+POST _query?format=txt
+{
+  "query": "FROM demo-security-logs | WHERE event.action == \"ssh_login\" AND event.outcome == \"failure\" | STATS deneme = COUNT(*) BY source.ip | SORT deneme DESC | LIMIT 5"
+}
+```
+
+```text
+    deneme     |   source.ip   
+---------------+---------------
+260            |198.51.100.77  
+240            |203.0.113.45   
+234            |185.220.101.5  
+224            |45.154.255.89  
+```
+
+Endpoint başına istek sayısı ve p95 yanıt süresi. `PERCENTILE(..., 95)`, isteklerin yüzde 95'inin bu sürenin altında kaldığını söyler; ortalamadan farklı olarak yavaş isteklerin etkisini gizlemez:
+
+```http
+POST _query?format=txt
+{
+  "query": "FROM demo-app-logs | STATS istek = COUNT(*), p95_ms = ROUND(PERCENTILE(event.duration_ms, 95)) BY url.original | SORT p95_ms DESC"
+}
+```
+
+```text
+     istek     |    p95_ms     |  url.original  
+---------------+---------------+----------------
+497            |2480.0         |/api/v1/payments
+508            |2190.0         |/api/v1/cart    
+465            |1859.0         |/api/v1/orders  
+511            |242.0          |/products       
+527            |238.0          |/api/v1/login   
+492            |236.0          |/healthz        
+```
+
+Bu üç tablo, Adım 2'deki panoda gördüğünüz panellerin arkasındaki hesaplamadır: "En çok 5xx veren servisler" ilk sorguyu, "Endpoint bazında istek ve p95 süre" üçüncü sorguyu çizer.
 
 ## Temizlik
 
-Demo index'lerini silmek için:
+Örnek index'leri silmek için:
 
 ```bash
 curl -s -u elastic:'DevOps2026!' -X DELETE "http://localhost:9200/demo-app-logs,demo-security-logs,demo-k8s-logs,demo-cicd-logs" | jq -c .
 ```
 
-Panolar ve data view'lar Kibana'da kalır; LAB-01 temizliği (`docker compose down -v`) hepsini siler.
+```text
+{"acknowledged":true}
+```
 
-Sonraki lab: **[LAB-ELK-06 — SIEM: Detection Rule ve Alert](../06-siem-detection/README.md)**
+Panolar ve data view'lar Kibana'da kalır, ama verisi olmadığı için boş görünür. Stack'in tamamı LAB-01 temizliğiyle (`docker compose down -v`) silinir.
+
+Sonraki lab: **[LAB-ELK-03 — Filebeat ile Linux ve Docker Logları](../03-filebeat-host-docker/README.md)**

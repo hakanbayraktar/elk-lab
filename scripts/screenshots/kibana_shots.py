@@ -191,7 +191,7 @@ def lab01(page):
             page.get_by_role("button", name=t).click(timeout=3000)
         except Exception:
             pass
-    console_text(page, 'POST devops-envanter/_doc/web-01?refresh=true&filter_path=_index,_id,result\n{\n  "sunucu": "web-01",\n  "rol": "frontend",\n  "durum": "aktif",\n  "cpu": 24\n}\n')
+    console_text(page, 'POST devops-envanter/_doc/web-01?refresh=true&pipeline=zaman-ekle&filter_path=_index,_id,result\n{\n  "sunucu": "web-01",\n  "rol": "frontend",\n  "durum": "aktif",\n  "cpu": 24\n}\n')
     page.locator(".monaco-editor .view-line").first.click(); time.sleep(1)
     page.locator('[data-test-subj="sendRequestButton"]').first.click(); time.sleep(4)
     shoot(page, lab, "02-devtools-run", [
@@ -206,6 +206,73 @@ def paste_into(page, locator, text):
     page.context.grant_permissions(["clipboard-read", "clipboard-write"], origin=BASE)
     page.evaluate("t => navigator.clipboard.writeText(t)", text)
     page.keyboard.press("Meta+V"); time.sleep(1)
+
+
+def lab01b(page):
+    """README Adim 6: data view ve Discover."""
+    lab = "LAB-ELK-01"
+    kibana_delete_by_title(page, "index-pattern", "DevOps Envanter")
+    page.goto(BASE + "/app/management/kibana/dataViews", wait_until="domcontentloaded"); settle(page, 4)
+    page.locator('[data-test-subj="createDataViewButton"]').first.click(); time.sleep(2)
+    page.locator('[data-test-subj="createIndexPatternNameInput"]').fill("DevOps Envanter")
+    page.locator('[data-test-subj="createIndexPatternTitleInput"]').fill("devops-envanter"); time.sleep(4)
+    shoot(page, lab, "03-data-view", [
+        (tid("createIndexPatternNameInput"), 6, "left"),
+        (tid("createIndexPatternTitleInput"), 7, "left"),
+        (tid("timestampField"), 8, "left"),
+        (tid("saveIndexPatternButton"), 9, "up"),
+    ])
+    page.locator('[data-test-subj="saveIndexPatternButton"]').click(); settle(page, 4)
+    page.goto(BASE + "/app/discover#/?_g=(time:(from:now-15m,to:now))", wait_until="domcontentloaded"); settle(page, 6)
+    page.locator('[data-test-subj="discover-dataView-switch-link"]').click(); time.sleep(1.5)
+    page.locator('[data-test-subj="indexPattern-switcher--input"]').fill("DevOps"); time.sleep(1.5)
+    page.get_by_role("option").filter(has_text=re.compile(r"^DevOps Envanter")).first.click(); settle(page, 6)
+    shoot(page, lab, "04-discover", [
+        (tid("discover-dataView-switch-link"), 10, "down"),
+        (tid("unifiedHistogramChart"), 11, "down"),
+        (tid("discoverDocTable"), 12, "up"),
+    ])
+
+
+def create_data_view_ui(page, name, pattern):
+    page.goto(BASE + "/app/management/kibana/dataViews", wait_until="domcontentloaded")
+    page.reload(wait_until="domcontentloaded"); settle(page, 4)
+    page.locator('[data-test-subj="createDataViewButton"]').first.click(); time.sleep(2)
+    page.locator('[data-test-subj="createIndexPatternNameInput"]').fill(name)
+    page.locator('[data-test-subj="createIndexPatternTitleInput"]').fill(pattern); time.sleep(4)
+
+
+def discover_with(page, view_prefix, query, time_from="now-1h"):
+    page.goto(BASE + f"/app/discover#/?_g=(time:(from:{time_from},to:now))", wait_until="domcontentloaded")
+    page.reload(wait_until="domcontentloaded"); settle(page, 6)
+    page.locator('[data-test-subj="discover-dataView-switch-link"]').click(); time.sleep(1.5)
+    page.locator('[data-test-subj="indexPattern-switcher--input"]').fill(view_prefix); time.sleep(1.5)
+    page.get_by_role("option").filter(has_text=re.compile("^" + re.escape(view_prefix))).first.click(); settle(page, 5)
+    q = page.locator('[data-test-subj="queryInput"]')
+    q.click(); q.fill(query); page.keyboard.press("Enter"); settle(page, 6)
+
+
+def lab03ui(page):
+    """README LAB-03 Adim 4: data view ve Discover."""
+    lab = "LAB-ELK-03"
+    for t_ in ("Sistem Logları", "Docker Logları"):
+        kibana_delete_by_title(page, "index-pattern", t_)
+    create_data_view_ui(page, "Sistem Logları", "system-logs-*")
+    shoot(page, lab, "01-data-view", [
+        (tid("createIndexPatternNameInput"), 1, "left"),
+        (tid("createIndexPatternTitleInput"), 2, "left"),
+        (tid("timestampField"), 3, "left"),
+        (tid("saveIndexPatternButton"), 4, "up"),
+    ])
+    page.locator('[data-test-subj="saveIndexPatternButton"]').click(); settle(page, 4)
+    create_data_view_ui(page, "Docker Logları", "docker-logs-*")
+    page.locator('[data-test-subj="saveIndexPatternButton"]').click(); settle(page, 4)
+    discover_with(page, "Sistem Logları", 'message : "Invalid user"')
+    shoot(page, lab, "02-discover-system", [
+        (tid("discover-dataView-switch-link"), 5, "down"),
+        (tid("queryInput"), 6, "down"),
+        (("text", "Available fields", True), 7, "right"),
+    ])
 
 
 def lab03(page):
@@ -225,87 +292,118 @@ def lab03(page):
     page.set_viewport_size({"width": 1600, "height": 900})
 
 
-def lab05(page):
+def lab02(page):
     lab = "LAB-ELK-02"
-    # Adim 1: hazir panolar listesi
     page.goto(BASE + "/app/dashboards#/list", wait_until="domcontentloaded"); settle(page, 5)
     shoot(page, lab, "01-dashboard-list", [
         (("union", ("role", "link", "Uygulama Trafiği ve Hatalar"), ("role", "link", "Güvenlik: SSH ve Firewall"),
-          ("role", "link", "Kubernetes ve CI/CD"), ("role", "link", "SSH ve Hatalar (betik)")), 1, "right"),
+          ("role", "link", "Kubernetes ve CI/CD")), 1, "right"),
     ])
-    # Adim 2: data view olustur (onceki denemeden kalani sil)
-    kibana_delete_by_title(page, "index-pattern", "Sistem Logları")
-    kibana_delete_by_title(page, "dashboard", "SSH ve Hatalar")
-    page.goto(BASE + "/app/management/kibana/dataViews", wait_until="domcontentloaded"); settle(page, 4)
-    shoot(page, lab, "02-create-data-view", [((tid("createDataViewButton")), 2, "down")])
-    page.locator('[data-test-subj="createDataViewButton"]').first.click(); time.sleep(2)
-    page.locator('[data-test-subj="createIndexPatternNameInput"]').fill("Sistem Logları")
-    page.locator('[data-test-subj="createIndexPatternTitleInput"]').fill("system-logs-*"); time.sleep(3)
-    shoot(page, lab, "03-data-view-form", [
-        (tid("createIndexPatternNameInput"), 3, "left"),
-        (tid("createIndexPatternTitleInput"), 4, "left"),
-        (tid("saveIndexPatternButton"), 5, "up"),
+    page.goto(BASE + "/app/dashboards#/view/demo-app-overview", wait_until="domcontentloaded")
+    page.reload(wait_until="domcontentloaded"); settle(page, 10)
+    shoot(page, lab, "02-app-dashboard", [
+        (("union", tid("superDatePickerToggleQuickMenuButton"), tid("superDatePickerShowDatesButton")), 2, "down"),
+        (("union", ("text", "Toplam istek", True), ("text", "Yanıt süresi p95 (ms)", True)), 3, "down"),
     ])
-    page.locator('[data-test-subj="saveIndexPatternButton"]').click(); settle(page, 4)
-    # Adim 3: Discover
-    page.goto(BASE + "/app/discover#/?_g=(time:(from:now-24h,to:now))", wait_until="domcontentloaded"); settle(page, 6)
+    page.goto(BASE + "/app/discover#/?_g=(time:(from:now-24h,to:now))", wait_until="domcontentloaded")
+    page.reload(wait_until="domcontentloaded"); settle(page, 6)
     page.locator('[data-test-subj="discover-dataView-switch-link"]').click(); time.sleep(1.5)
-    page.locator('[data-test-subj="indexPattern-switcher--input"]').fill("Sistem"); time.sleep(1.5)
-    page.get_by_role("option").filter(has_text=re.compile(r"^Sistem Logları")).first.click(); settle(page, 5)
+    page.locator('[data-test-subj="indexPattern-switcher--input"]').fill("Demo Uygulama"); time.sleep(1.5)
+    page.get_by_role("option").filter(has_text=re.compile(r"^Demo Uygulama Logları")).first.click(); settle(page, 5)
     q = page.locator('[data-test-subj="queryInput"]')
-    q.click(); q.fill('event.outcome : "failure"'); page.keyboard.press("Enter"); settle(page, 6)
-    shoot(page, lab, "04-discover-kql", [
-        (tid("discover-dataView-switch-link"), 6, "down"),
-        (tid("queryInput"), 7, "down"),
+    q.click(); q.fill("http.response.status_code >= 500"); page.keyboard.press("Enter"); settle(page, 6)
+    shoot(page, lab, "03-discover-kql", [
+        (tid("discover-dataView-switch-link"), 4, "down"),
+        (tid("superDatePickerToggleQuickMenuButton"), 5, "down"),
+        (tid("queryInput"), 6, "down"),
+        (tid("discoverQueryHits"), 7, "right"),
+        (tid("select-text-based-language-btn"), 8, "down"),
     ])
-    # Adim 4: Lens ile panel ve pano
-    page.goto(BASE + "/app/dashboards#/create", wait_until="domcontentloaded"); settle(page, 5)
-    shoot(page, lab, "05-create-visualization", [(("role", "button", "Create visualization"), 8, "down")])
-    page.get_by_role("button", name="Create visualization").first.click(); settle(page, 6)
+    page.locator('[data-test-subj="select-text-based-language-btn"]').click(); settle(page, 5)
+    ed = page.locator('[data-test-subj="ESQLEditor"] .monaco-editor').first
+    paste_into(page, ed, "FROM demo-app-logs\n| WHERE http.response.status_code >= 500\n| STATS hata = COUNT(*) BY service.name\n| SORT hata DESC")
+    page.locator('[data-test-subj="querySubmitButton"]').click(); settle(page, 8)
+    shoot(page, lab, "04-discover-esql", [
+        (("css", '[data-test-subj="ESQLEditor"] .monaco-editor'), 9, "down"),
+        (tid("querySubmitButton"), 10, "down"),
+    ])
+    # sonraki labda Discover klasik modda acilsin
+    try:
+        page.locator('[data-test-subj="switch-to-dataviews"]').click(timeout=3000); time.sleep(2)
+    except Exception:
+        pass
+
+
+def lens_new_viz(page, view_prefix, query, field, time_quick=None):
     page.locator('[data-test-subj="lns-dataView-switch-link"]').click(); time.sleep(1.5)
-    page.locator('[data-test-subj="indexPattern-switcher--input"]').fill("Sistem"); time.sleep(1.5)
-    page.get_by_role("option").filter(has_text=re.compile(r"^Sistem Logları")).first.click(); settle(page, 4)
+    page.locator('[data-test-subj="indexPattern-switcher--input"]').fill(view_prefix); time.sleep(1.5)
+    page.get_by_role("option").filter(has_text=re.compile("^" + re.escape(view_prefix))).first.click(); settle(page, 4)
+    if time_quick:
+        page.locator('[data-test-subj="superDatePickerToggleQuickMenuButton"]').click(); time.sleep(1)
+        page.get_by_text(time_quick, exact=True).first.click(); time.sleep(2)
     q = page.locator('[data-test-subj="queryInput"]')
-    q.click(); q.fill('event.outcome : "failure"'); page.keyboard.press("Enter"); time.sleep(2)
-    page.locator('[data-test-subj="lnsIndexPatternFieldSearch"]').fill("source.ip"); time.sleep(1.5)
-    field = page.locator('[data-test-subj="lnsFieldListPanelField-source.ip.keyword"]')
-    field.drag_to(page.locator('[data-test-subj="lnsWorkspace"]')); settle(page, 6)
-    shoot(page, lab, "06-lens-drag-field", [
-        (tid("lns-dataView-switch-link"), 9, "down"),
+    q.click(); q.fill(query); page.keyboard.press("Enter"); time.sleep(2)
+    page.locator('[data-test-subj="lnsIndexPatternFieldSearch"]').fill(field.split(".keyword")[0]); time.sleep(1.5)
+    page.locator(f'[data-test-subj="lnsFieldListPanelField-{field}"]').drag_to(
+        page.locator('[data-test-subj="lnsWorkspace"]')); settle(page, 6)
+
+
+def lab04ui(page):
+    """README LAB-04 Adim 7-8: Discover alanlari, Lens panelleri, pano."""
+    lab = "LAB-ELK-04"
+    kibana_delete_by_title(page, "dashboard", "SSH ve Nginx")
+    discover_with(page, "Sistem Logları", 'event.outcome : "failure"')
+    page.locator('[data-test-subj="field-source.ip-showDetails"], [data-test-subj="field-source.ip"]').first.click(); time.sleep(3)
+    shoot(page, lab, "02-discover-fields", [
+        (tid("discover-dataView-switch-link"), 5, "down"),
+        (tid("queryInput"), 6, "down"),
+        (("css", '[data-test-subj="field-source.ip"]'), 7, "right"),
+    ])
+    page.keyboard.press("Escape"); time.sleep(1)
+    page.goto(BASE + "/app/dashboards#/create", wait_until="domcontentloaded")
+    page.reload(wait_until="domcontentloaded"); settle(page, 5)
+    page.get_by_role("button", name="Create visualization").first.click(); settle(page, 6)
+    lens_new_viz(page, "Sistem Logları", 'event.outcome : "failure"', "source.ip.keyword", "Last 1 hour")
+    shoot(page, lab, "03-lens-ssh", [
+        (tid("lns-dataView-switch-link"), 8, "down"),
+        (tid("superDatePickerToggleQuickMenuButton"), 9, "down"),
         (tid("queryInput"), 10, "down"),
         (tid("lnsFieldListPanelField-source.ip.keyword"), 11, "right"),
         (tid("lnsApp_saveAndReturnButton"), 12, "down"),
     ])
     page.locator('[data-test-subj="lnsApp_saveAndReturnButton"]').click(); settle(page, 6)
-    # ikinci panel: hazir panodaki "En cok 5xx veren servisler"
     page.get_by_role("button", name="Create visualization").first.click(); settle(page, 6)
-    page.locator('[data-test-subj="lns-dataView-switch-link"]').click(); time.sleep(1.5)
-    page.locator('[data-test-subj="indexPattern-switcher--input"]').fill("Demo Uygulama"); time.sleep(1.5)
-    page.get_by_role("option").filter(has_text="Demo Uygulama Logları").first.click(); settle(page, 4)
-    page.locator('[data-test-subj="superDatePickerToggleQuickMenuButton"]').click(); time.sleep(1)
-    page.get_by_text("Last 24 hours", exact=True).first.click(); time.sleep(2)
-    q = page.locator('[data-test-subj="queryInput"]')
-    q.click(); q.fill("http.response.status_code >= 500"); page.keyboard.press("Enter"); time.sleep(2)
-    page.locator('[data-test-subj="lnsIndexPatternFieldSearch"]').fill("service.name"); time.sleep(1.5)
-    page.locator('[data-test-subj="lnsFieldListPanelField-service.name"]').drag_to(
-        page.locator('[data-test-subj="lnsWorkspace"]')); settle(page, 5)
-    shoot(page, lab, "07-lens-5xx-panel", [
+    lens_new_viz(page, "Docker Logları", 'container.name : "demo-nginx" and http.response.status_code >= 200',
+                 "url.original.keyword")
+    shoot(page, lab, "04-lens-nginx", [
         (tid("lns-dataView-switch-link"), 13, "down"),
-        (tid("superDatePickerToggleQuickMenuButton"), 14, "down"),
-        (tid("queryInput"), 15, "down"),
-        (tid("lnsFieldListPanelField-service.name"), 16, "right"),
-        (tid("lnsApp_saveAndReturnButton"), 17, "down"),
+        (tid("queryInput"), 14, "down"),
+        (tid("lnsFieldListPanelField-url.original.keyword"), 15, "right"),
+        (tid("lnsApp_saveAndReturnButton"), 16, "down"),
     ])
     page.locator('[data-test-subj="lnsApp_saveAndReturnButton"]').click(); settle(page, 6)
     page.locator('[data-test-subj="dashboardInteractiveSaveMenuItem"]').click(); time.sleep(2)
-    page.locator('[data-test-subj="savedObjectTitle"]').fill("SSH ve Hatalar"); time.sleep(1)
-    shoot(page, lab, "08-save-dashboard", [
-        (tid("savedObjectTitle"), 18, "left"),
-        (tid("confirmSaveSavedObjectButton"), 19, "up"),
+    page.locator('[data-test-subj="savedObjectTitle"]').fill("SSH ve Nginx"); time.sleep(1)
+    shoot(page, lab, "05-save-dashboard", [
+        (tid("savedObjectTitle"), 17, "left"),
+        (tid("confirmSaveSavedObjectButton"), 18, "up"),
     ])
     page.locator('[data-test-subj="confirmSaveSavedObjectButton"]').click(); settle(page, 6)
-    page.screenshot(path=os.path.join(ROOT, "..", "check", "lab05-final.png"))
 
+
+def lab05ui(page):
+    """README LAB-05: k8s data view ve Discover."""
+    lab = "LAB-ELK-05"
+    kibana_delete_by_title(page, "index-pattern", "Kubernetes Logları")
+    create_data_view_ui(page, "Kubernetes Logları", "k8s-logs-*")
+    page.locator('[data-test-subj="saveIndexPatternButton"]').click(); settle(page, 4)
+    discover_with(page, "Kubernetes Logları", 'kubernetes.pod.name : payment-service* and message : "Traceback"', "now-1h")
+    page.locator('[data-test-subj="docTableExpandToggleColumn"]').first.click(); settle(page, 4)
+    shoot(page, lab, "01-discover-k8s", [
+        (tid("discover-dataView-switch-link"), 1, "down"),
+        (tid("queryInput"), 2, "down"),
+        (("css", '[data-test-subj="docViewerFlyout"], [data-test-subj="kbnDocViewer"]'), 3, "left"),
+    ])
 
 def combo_add(page, root, text):
     box = page.locator(f'[data-test-subj="{root}"]')
@@ -391,7 +489,7 @@ def lab07(page):
     ])
 
 
-FLOWS = {"lab07": lab07, "lab01": lab01, "lab03": lab03, "lab05": lab05, "lab06rule": lab06_create_rule, "lab06": lab06}
+FLOWS = {"lab07": lab07, "lab01": lab01, "lab01b": lab01b, "lab03ui": lab03ui, "lab04grok": lab03, "lab02": lab02, "lab04ui": lab04ui, "lab05ui": lab05ui, "lab06rule": lab06_create_rule, "lab06": lab06}
 
 if __name__ == "__main__":
     names = sys.argv[1:] or list(FLOWS)

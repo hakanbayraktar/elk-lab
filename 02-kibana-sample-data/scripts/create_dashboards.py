@@ -27,8 +27,6 @@ VIEWS = {
     "demo-security": ("demo-security-logs", "Demo Güvenlik Logları"),
     "demo-k8s": ("demo-k8s-logs", "Demo Kubernetes Olayları"),
     "demo-cicd": ("demo-cicd-logs", "Demo CI/CD Pipeline Logları"),
-    # README Adim 4'te elle kurulan panonun betik kopyasi; ad cakismasin diye "(betik)" eki var
-    "elk-system-logs": ("system-logs-*", "Betik: Sistem Logları"),
 }
 
 ERR = "http.response.status_code >= 500"
@@ -80,15 +78,6 @@ DASHBOARDS = {
         ("demo-cicd-stage", "Stage bazında ortalama süre (sn)", "table", "demo-cicd",
          {"buckets": [("terms", "ci.stage", 10)],
           "metrics": [("count",), ("average", "ci.duration_sec")]}, (0, 22, 48, 12)),
-    ]),
-    # README Adim 4'te elle kurulan "SSH ve Hatalar" panosunun aynisi
-    "ssh-errors-script": ("SSH ve Hatalar (betik)", [
-        ("ssh-failed-by-ip", "Başarısız SSH girişi: kaynak IP", "xy", "elk-system-logs",
-         {"bucket": ("terms", "source.ip.keyword", 5), "metric": ("count",),
-          "query": 'event.outcome : "failure"', "series_type": "bar_stacked"}, (0, 0, 24, 15)),
-        ("app-5xx-by-service", "En çok 5xx veren servisler", "xy", "demo-app",
-         {"bucket": ("terms", "service.name", 5), "metric": ("count",),
-          "query": ERR, "series_type": "bar_stacked"}, (24, 0, 24, 15)),
     ]),
 }
 
