@@ -230,13 +230,35 @@ POST _query?format=txt
 }
 ```
 
+Örnek çıktı (bu sunucuda internetten gelen bir IP ve sizin denemeniz):
+
+```text
+    deneme     |   source.ip   
+---------------+---------------
+23             |109.160.32.132 
+1              |127.0.0.1      
+```
+
 Panoda veri olsun diye Nginx'e birkaç istek atın (`/` 200, diğerleri 404 döner):
 
 ```bash
 for p in / /urunler /sepet / /iletisim /urunler /; do
   curl -s -o /dev/null -w "%{http_code} $p\n" "http://localhost:8081$p"
 done
+sleep 15
 ```
+
+```text
+200 /
+404 /urunler
+404 /sepet
+200 /
+404 /iletisim
+404 /urunler
+200 /
+```
+
+`sleep 15`, istek satırlarının Filebeat ve Logstash üzerinden Elasticsearch'e ulaşması için süre tanır.
 
 Nginx isteklerini durum koduna göre sayın; `IS NOT NULL`, grok öncesi satırları dışarıda bırakır:
 
@@ -246,6 +268,8 @@ POST _query?format=txt
   "query": "FROM docker-logs-* | WHERE container.name == \"demo-nginx\" AND http.response.status_code IS NOT NULL | STATS istek = COUNT(*) BY http.response.status_code | SORT istek DESC"
 }
 ```
+
+Çıktıda iki satır görünür: `404` (döngüdeki 4 istek ve Adım 5'teki istek) ve `200` (ana sayfaya atılan 3 istek).
 
 ### 8. Lens ile pano
 
@@ -270,6 +294,12 @@ POST _query?format=txt
 ```bash
 cd ~/elk-lab/04-logstash-grok
 python3 scripts/create_dashboard.py
+```
+
+```text
+[+] Data view: Betik: Sistem Logları (system-logs-*)
+[+] Data view: Betik: Docker Logları (docker-logs-*)
+[+] Pano: SSH ve Nginx (betik)  ->  /app/dashboards#/view/grok-ssh-nginx
 ```
 
 **Analytics > Dashboards**'ta iki panoyu yan yana açın; aynı sayıları gösterirler.

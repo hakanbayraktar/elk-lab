@@ -17,7 +17,7 @@
 
 ## Mimari ve Çalışma Modeli
 
-Kendi loglarınızı toplamadan önce aramayı ve panoları zengin bir veriyle öğrenmek için örnek veri kullanılır. Veri sentetiktir ama gerçek loglara benzer: servis adları, HTTP durum kodları, yanıt süreleri, SSH denemeleri, pod olayları, pipeline sonuçları.
+Kendi loglarınızı toplamadan önce aramayı ve panoları hazır, gerçeğe benzer bir veriyle öğrenirsiniz.
 
 | Kavram | Ne işe yarar |
 |---|---|
@@ -31,8 +31,8 @@ Veriyi ve panoları `scripts/` klasöründeki iki betik kurar:
 
 | Betik | Ne yapar |
 |---|---|
-| `generate_demo_data.py` | Dört index'i (`demo-app-logs`, `demo-security-logs`, `demo-k8s-logs`, `demo-cicd-logs`) silip yeniden oluşturur ve son 24 saate yayılmış belgeler yazar. Alan türlerini (sayı, IP, keyword) baştan belirler; böylece gruplama ve aralık sorguları doğru çalışır. Sabit bir rastgele tohum kullandığı için sayılar her kurulumda aynıdır. |
-| `create_dashboards.py` | Dört data view'ı ve üç panoyu Kibana API'siyle kurar. Panelleri `lens_builder.py` ile üretir ve göndermeden önce doğrular. |
+| `generate_demo_data.py` | Dört `demo-*` index'ini yeniden oluşturur, son 24 saate yayılmış belgeler yazar. Alan türlerini baştan belirler; sayılar her kurulumda aynıdır. |
+| `create_dashboards.py` | Data view'ları ve üç panoyu Kibana API'siyle kurar. |
 
 ## Adım Adım Uygulama Rehberi
 
@@ -80,14 +80,14 @@ Kibana menüsünden **Analytics > Dashboards**'u açın. Üç pano listededir (1
 | Güvenlik: SSH ve Firewall | Kaç başarısız SSH girişi var, hangi IP'ler deniyor, hangi kullanıcı adları deneniyor? |
 | Kubernetes ve CI/CD | Kaç OOMKilled var, hangi namespace'te sorun var, pipeline'ların yüzde kaçı başarısız, hangi stage yavaş? |
 
-Zaman seçicisini (2) **Last 1 hour** yapın: bütün paneller aynı anda yalnız son bir saati gösterir. Bir grafikteki çubuğa tıklarsanız o değer bütün panoya filtre olarak eklenir; filtreyi üstteki çubuktan kaldırabilirsiniz.
+Zaman seçicisini (2) değiştirince bütün paneller birlikte güncellenir. Bir çubuğa tıklamak o değeri bütün panoya filtre olarak ekler.
 
 ### 3. Discover'da KQL ile arama
 
 1. Menüden **Analytics > Discover**'ı açın.
 2. Data view seçicisinden (4) **Demo Uygulama Logları**'nı seçin.
 3. Zaman aralığını (5) **Last 24 hours** yapın.
-4. Arama çubuğuna (6) aşağıdaki sorguyu yazıp Enter'a basın. Belge sayısı (7) ve zaman grafiği yalnız 5xx hatalarını gösterecek şekilde değişir:
+4. Arama çubuğuna (6) yazıp Enter'a basın; belge sayısı (7) yalnız 5xx hatalarını gösterir:
 
 ```text
 http.response.status_code >= 500
@@ -95,7 +95,7 @@ http.response.status_code >= 500
 
 ![Discover KQL](../assets/screenshots/LAB-ELK-02/03-discover-kql.png){width=75%}
 
-Başka sorgular deneyin. Her birinde sağ üstteki belge sayısının nasıl değiştiğine bakın:
+Başka sorgular deneyin:
 
 | Soru | KQL |
 |---|---|
@@ -108,12 +108,12 @@ KQL belgeleri süzer, ama "hangi servis kaç hata verdi" gibi sayım yapamaz. Bu
 
 ### 4. ES|QL ile hesaplama
 
-ES|QL sorgusu bir kaynakla (`FROM`) başlar ve her `|` sonrası komut bir öncekinin sonucunu işler: `WHERE` süzer, `STATS ... BY` gruplayıp hesaplar, `SORT` sıralar, `LIMIT` satır sayısını sınırlar.
+ES|QL `FROM` ile başlar; her `|` bir öncekinin sonucunu işler: `WHERE` süzer, `STATS ... BY` gruplayıp hesaplar, `SORT` sıralar, `LIMIT` sınırlar.
 
 **Discover'da:**
 
-1. Discover'da üstteki **Try ES|QL**'e (8, önceki görüntüde) tıklayın. Arama çubuğu ES|QL sorgu kutusuna dönüşür.
-2. Sorgu kutusuna (9) aşağıdaki sorguyu yazıp sağ üstteki **Refresh**'e (10) basın ya da `Ctrl+Enter` (Mac'te `Cmd+Enter`) kullanın. Sonuç belge listesi yerine tablo olarak gelir:
+1. Discover'da **Try ES|QL**'e (8, önceki görüntüde) tıklayın.
+2. Sorguyu kutuya (9) yazıp **Refresh**'e (10) ya da `Ctrl+Enter`'a basın; sonuç tablo olarak gelir:
 
 ```text
 FROM demo-app-logs
@@ -124,11 +124,11 @@ FROM demo-app-logs
 
 ![Discover ES|QL](../assets/screenshots/LAB-ELK-02/04-discover-esql.png){width=75%}
 
-Discover, sağ üstteki zaman aralığını (son 24 saat) ES|QL sorgusuna da uygular. Örnek veri tam 24 saate yayıldığı için en eski birkaç belge bu aralığın dışında kalır; bu yüzden Discover'daki sayılar aşağıda Dev Tools'ta göreceğiniz sayılardan biraz küçük olabilir. Discover'dan çıkıp **Classic**'e dönmek için sağ üstteki **Switch to classic**'e tıklayın.
+Discover zaman aralığını ES|QL'e de uygular; en eski birkaç belge dışarıda kaldığı için sayılar Dev Tools'takinden biraz küçük olabilir. Normal Discover'a **Switch to classic** ile dönersiniz.
 
-**Dev Tools'ta:** Aynı sorgular `_query` API'siyle de çalışır; `format=txt` sonucu tablo olarak verir. Dev Tools'taki sorguda zaman filtresi yoktur, bütün belgeler sayılır. Menüden **Management > Dev Tools**'u açıp istekleri tek tek çalıştırın.
+**Dev Tools'ta:** Aynı sorgular `_query` API'siyle çalışır; `format=txt` tablo verir, zaman filtresi yoktur.
 
-Servis başına 5xx hata sayısı (Discover'daki sorgunun aynısı):
+Servis başına 5xx hata sayısı:
 
 ```http
 POST _query?format=txt
@@ -147,7 +147,7 @@ POST _query?format=txt
 67             |frontend       
 ```
 
-En çok başarısız SSH girişi deneyen 5 IP. Sorgunun içindeki çift tırnaklar JSON içinde olduğu için `\"` ile yazılır:
+En çok başarısız SSH girişi deneyen 5 IP (JSON içindeki tırnaklar `\"` ile yazılır):
 
 ```http
 POST _query?format=txt
@@ -165,7 +165,7 @@ POST _query?format=txt
 224            |45.154.255.89  
 ```
 
-Endpoint başına istek sayısı ve p95 yanıt süresi. `PERCENTILE(..., 95)`, isteklerin yüzde 95'inin bu sürenin altında kaldığını söyler; ortalamadan farklı olarak yavaş isteklerin etkisini gizlemez:
+Endpoint başına istek sayısı ve p95 süre (isteklerin %95'i bu sürenin altında kalır; ortalama yavaş istekleri gizler, p95 gizlemez):
 
 ```http
 POST _query?format=txt
@@ -185,7 +185,7 @@ POST _query?format=txt
 492            |236.0          |/healthz        
 ```
 
-Bu üç tablo, Adım 2'deki panoda gördüğünüz panellerin arkasındaki hesaplamadır: "En çok 5xx veren servisler" ilk sorguyu, "Endpoint bazında istek ve p95 süre" üçüncü sorguyu çizer.
+Adım 2'deki panolar bu hesaplamaları çizer.
 
 ## Temizlik
 

@@ -171,17 +171,17 @@ curl -s -u elastic:'DevOps2026!' "http://localhost:9200/k8s-logs-*/_count?q=mess
 
 1. **Management > Stack Management > Data Views > Create data view** ile yeni data view oluşturun: **Name** `Kubernetes Logları`, **Index pattern** `k8s-logs-*`, **Timestamp field** `@timestamp`, **Save data view to Kibana**.
 2. **Analytics > Discover**'da data view olarak (1) **Kubernetes Logları**'nı seçin, zaman aralığını **Last 1 hour** yapın.
-3. Arama çubuğuna (2) yazıp Enter'a basın. `kubernetes.pod.name` alanını Filebeat'in Kubernetes metadata işlemcisi ekledi; `payment-service*` deployment'ın bütün pod'larını kapsar (pod adının sonundaki rastgele ek her yeniden başlatmada değişir):
+3. Arama çubuğuna (2) yazın. `kubernetes.labels.app`, pod'un `app` etiketidir ve deployment'ın bütün pod'larında aynıdır; pod adı ise her yeniden başlatmada değişir:
 
 ```text
-kubernetes.pod.name : payment-service* and message : "Traceback"
+kubernetes.labels.app : "payment-service" and message : "Traceback"
 ```
 
-4. Bir satırın solundaki ok simgesine tıklayıp belgeyi açın (3). `message` alanında hata yığınının dört satırı tek belgede alt alta durur; `kubernetes.namespace`, `kubernetes.node.name`, `kubernetes.container.name` alanları da aynı belgede.
+4. Bir satırı açın (3): `message` içinde hata yığınının dört satırı ve `kubernetes.*` alanları tek belgededir.
 
    ![Discover Kubernetes](../assets/screenshots/LAB-ELK-05/01-discover-k8s.png){width=75%}
 
-Pod'a, namespace'e ya da node'a göre süzmek, `kubectl logs` ile tek tek pod'a bakmaktan farklı olarak bütün cluster'ın logunu tek ekranda ve geçmişe dönük arar; pod silinse de logu Elasticsearch'te kalır.
+`kubectl logs`'tan farkı: bütün cluster'ın logu tek ekranda ve geçmişe dönük aranır; pod silinse de log kalır.
 
 ## Temizlik
 

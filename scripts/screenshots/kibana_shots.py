@@ -229,8 +229,8 @@ def lab01b(page):
     page.get_by_role("option").filter(has_text=re.compile(r"^DevOps Envanter")).first.click(); settle(page, 6)
     shoot(page, lab, "04-discover", [
         (tid("discover-dataView-switch-link"), 10, "down"),
-        (tid("unifiedHistogramChart"), 11, "down"),
-        (tid("discoverDocTable"), 12, "up"),
+        (tid("unifiedHistogramChart"), 11, None),
+        (tid("discoverDocTable"), 12, None),
     ])
 
 
@@ -397,8 +397,8 @@ def lab05ui(page):
     kibana_delete_by_title(page, "index-pattern", "Kubernetes Logları")
     create_data_view_ui(page, "Kubernetes Logları", "k8s-logs-*")
     page.locator('[data-test-subj="saveIndexPatternButton"]').click(); settle(page, 4)
-    discover_with(page, "Kubernetes Logları", 'kubernetes.pod.name : payment-service* and message : "Traceback"', "now-1h")
-    page.locator('[data-test-subj="docTableExpandToggleColumn"]').first.click(); settle(page, 4)
+    discover_with(page, "Kubernetes Logları", 'kubernetes.labels.app : "payment-service" and message : "Traceback"', "now-2h")
+    page.get_by_role("button", name="Toggle dialog with details").first.click(); settle(page, 4)
     shoot(page, lab, "01-discover-k8s", [
         (tid("discover-dataView-switch-link"), 1, "down"),
         (tid("queryInput"), 2, "down"),

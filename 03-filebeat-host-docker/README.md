@@ -158,11 +158,11 @@ curl -s -u elastic:'DevOps2026!' "http://localhost:9200/docker-logs-*/_search?si
 
 ### 4. Logları Kibana'da görme
 
-Loglar Elasticsearch'te, ama Kibana onları henüz göstermez: Discover bir **data view** olmadan index okumaz. Her log kaynağı için bir data view oluşturun.
+Loglar Elasticsearch'te ama Discover bir **data view** olmadan göstermez. Her kaynak için bir data view oluşturun.
 
 1. Menüden **Management > Stack Management > Data Views**'a gidin ve **Create data view**'a tıklayın.
 2. **Name** (1): `Sistem Logları`
-3. **Index pattern** (2): `system-logs-*`. Logstash her gün yeni bir index açar (`system-logs-2026.11.19`, `system-logs-2026.11.20`…); `*` hepsini kapsar. Sağda eşleşen index listelenir.
+3. **Index pattern** (2): `system-logs-*` (Logstash her gün yeni index açar; `*` hepsini kapsar).
 4. **Timestamp field** (3): `@timestamp`.
 5. **Save data view to Kibana**'ya (4) tıklayın.
 
@@ -173,20 +173,20 @@ Loglar Elasticsearch'te, ama Kibana onları henüz göstermez: Discover bir **da
 Şimdi Discover'da arayın:
 
 1. Menüden **Analytics > Discover**'ı açın, data view seçicisinden (5) **Sistem Logları**'nı seçin.
-2. Zaman aralığını **Last 1 hour** yapın. Filebeat eski satırları da gönderdiği için daha geniş aralıkta binlerce satır görünür.
+2. Zaman aralığını **Last 1 hour** yapın.
 3. Arama çubuğuna (6) yazıp Enter'a basın:
 
 ```text
 message : "Invalid user"
 ```
 
-4. Sol listedeki alanlara (7) bakın: `message`, `log.file.path`, `fields.log_source`, `host.name` gibi Filebeat'in eklediği alanlar var, ama kullanıcı adı ya da IP için ayrı alan yok.
+4. Sol listedeki alanlara (7) bakın: kullanıcı adı ya da IP için ayrı alan yok, her şey `message` içinde.
 
    ![Discover sistem logları](../assets/screenshots/LAB-ELK-03/02-discover-system.png){width=75%}
 
-Bu ham hâlin sınırıdır: "Invalid user" geçen satırları bulabilirsiniz, ama "hangi IP kaç kez denedi" sorusunu soramazsınız; IP satırın içinde metin olarak durur. Bunun için satırın Logstash'te alanlara ayrılması gerekir.
+Satırları bulabilirsiniz ama "hangi IP kaç kez denedi" diye sayamazsınız; bunun için satırın Logstash'te alanlara ayrılması gerekir.
 
-Data view'ı **Docker Logları** yapın ve şu sorguyu deneyin; test container'ının üç satırı listelenir. `container.name` alanını Filebeat'in autodiscover özelliği eklediği için Docker loglarında container'a göre süzmek bu aşamada da mümkündür:
+Data view'ı **Docker Logları** yapıp container'a göre süzün (`container.name`'i Filebeat ekledi):
 
 ```text
 container.name : "demo-worker"

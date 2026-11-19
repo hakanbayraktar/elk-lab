@@ -213,10 +213,11 @@ GET devops-envanter/_search?filter_path=hits.hits._source
     "hits": [
       {
         "_source": {
-          "sunucu": "web-01",
-          "rol": "frontend",
           "durum": "aktif",
-          "cpu": 24
+          "@timestamp": "2026-11-19T21:12:49.145021204Z",
+          "cpu": 24,
+          "sunucu": "web-01",
+          "rol": "frontend"
         }
       }
     ]
@@ -239,10 +240,11 @@ GET devops-envanter/_search?filter_path=hits.hits._source
     "hits": [
       {
         "_source": {
-          "sunucu": "db-01",
-          "rol": "database",
           "durum": "bakimda",
-          "cpu": 71
+          "@timestamp": "2026-11-19T21:12:57.622635981Z",
+          "cpu": 71,
+          "sunucu": "db-01",
+          "rol": "database"
         }
       }
     ]
@@ -265,7 +267,7 @@ POST devops-envanter/_update/db-01?refresh=true&filter_path=result
 }
 ```
 
-Belgeyi kimliğiyle okuyun:
+Belgeyi kimliğiyle okuyun. `@timestamp` pipeline'ın eklediği kayıt anıdır; sizde farklı olur:
 
 ```http
 GET devops-envanter/_doc/db-01?filter_path=_source
@@ -274,10 +276,11 @@ GET devops-envanter/_doc/db-01?filter_path=_source
 ```text
 {
   "_source": {
-    "sunucu": "db-01",
-    "rol": "database",
     "durum": "aktif",
-    "cpu": 71
+    "@timestamp": "2026-11-19T21:12:57.622635981Z",
+    "cpu": 71,
+    "sunucu": "db-01",
+    "rol": "database"
   }
 }
 ```
