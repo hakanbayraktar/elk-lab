@@ -1,4 +1,4 @@
-# LAB-ELK-04 — Kubernetes Pod Logları
+# LAB-ELK-05 — Kubernetes Pod Logları
 
 | Profil / Araçlar | Açık Portlar |
 |---|---|
@@ -18,7 +18,7 @@
 
 ## Mimari ve Çalışma Modeli
 
-![Kubernetes log akışı](../assets/diagrams/04-k8s-filebeat.png){width=60%}
+![Kubernetes log akışı](../assets/diagrams/05-k8s-filebeat.png){width=60%}
 
 - Container'ların stdout/stderr çıktısı node'da `/var/log/containers/*.log` dosyalarına yazılır.
 - DaemonSet her node'da bir Filebeat pod'u çalıştırır; pod bu klasörü `hostPath` ile okur.
@@ -57,7 +57,7 @@ Kubernetes bunu dört ayrı satır olarak yazar. `multiline` ayarı `[` ile baş
 kind, Kubernetes node'larını Docker container'ı olarak çalıştırır. `kind-config.yaml` tek node'lu `elk-lab` cluster'ını tanımlar. `--kubeconfig ~/.kube/elk-lab`, bağlantı bilgisini ayrı bir dosyaya yazar; varsayılan `~/.kube/config` dosyası ve sunucudaki diğer cluster'ların ayarı değişmez:
 
 ```bash
-cd ~/elk-lab/04-kubernetes-logs
+cd ~/elk-lab/05-kubernetes-logs
 kind create cluster --config kind-config.yaml --kubeconfig ~/.kube/elk-lab
 ```
 
@@ -179,4 +179,4 @@ unset KUBECONFIG
 
 `k8s-logs-*` index'leri Elasticsearch'te kalır.
 
-Sonraki lab: **[LAB-ELK-05 — Kibana: Discover, Lens ve Hazır Panolar](../05-kibana-dashboards/README.md)**
+Sonraki lab: **[LAB-ELK-02 — Kibana: Discover, Lens ve Hazır Panolar](../02-kibana-sample-data/README.md)**

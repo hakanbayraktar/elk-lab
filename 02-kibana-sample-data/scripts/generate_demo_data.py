@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Hazir panolar icin son 24 saate yayilmis demo verisi uretir.
 
-Veri sentetiktir ve yalnizca demo-* index'lerine yazilir; LAB-02/03/04'un gercek
+Veri sentetiktir ve yalnizca demo-* index'lerine yazilir; LAB-03/03/04'un gercek
 loglari (system-logs-*, docker-logs-*, k8s-logs-*) ile karismaz. Betik her
 calistiginda bu dort index'i silip yeniden olusturur.
 """

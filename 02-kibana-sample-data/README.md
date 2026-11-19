@@ -1,4 +1,4 @@
-# LAB-ELK-05 — Kibana: Discover, Lens ve Hazır Panolar
+# LAB-ELK-02 — Kibana: Discover, Lens ve Hazır Panolar
 
 | Profil / Araçlar | Açık Portlar |
 |---|---|
@@ -13,7 +13,7 @@
 ## Ön Koşullar
 
 - LAB-ELK-01 stack'i çalışıyor olmalıdır.
-- Adım 2-4 için LAB-ELK-03 sonrası `system-logs-*` index'inde ayrışmış SSH satırları olmalıdır.
+- Adım 2-4 için LAB-ELK-04 sonrası `system-logs-*` index'inde ayrışmış SSH satırları olmalıdır.
 - Kibana adresi: `echo "https://$(hostname)-kibana.devopsatolyesi.com"`, kullanıcı `elastic`, parola `DevOps2026!`.
 
 ## Mimari ve Çalışma Modeli
@@ -38,7 +38,7 @@ Hazır panolar `scripts/` klasöründeki iki betikle kurulur:
 ### 1. Hazır panoları kurma
 
 ```bash
-cd ~/elk-lab/05-kibana-dashboards
+cd ~/elk-lab/02-kibana-sample-data
 python3 scripts/generate_demo_data.py
 ```
 
@@ -67,7 +67,7 @@ python3 scripts/create_dashboards.py
 
 Kibana menüsünden **Analytics > Dashboards**'u açın. Dört pano listededir (1); birine tıklayın.
 
-![Hazır panolar](../assets/screenshots/LAB-ELK-05/01-dashboard-list.png){width=75%}
+![Hazır panolar](../assets/screenshots/LAB-ELK-02/01-dashboard-list.png){width=75%}
 
 | Pano | Cevapladığı sorular |
 |---|---|
@@ -84,13 +84,13 @@ Kendi SSH loglarınız için bir data view oluşturun. Logstash her gün yeni bi
 
 1. Menüden **Management > Stack Management > Data Views**'a gidin ve **Create data view**'a (2) tıklayın.
 
-   ![Create data view](../assets/screenshots/LAB-ELK-05/02-create-data-view.png){width=75%}
+   ![Create data view](../assets/screenshots/LAB-ELK-02/02-create-data-view.png){width=75%}
 
 2. **Name** (3): `Sistem Logları`
 3. **Index pattern** (4): `system-logs-*`. Sağda eşleşen index görünür. **Timestamp field** `@timestamp` kalır.
 4. **Save data view to Kibana**'ya (5) tıklayın.
 
-   ![Data view formu](../assets/screenshots/LAB-ELK-05/03-data-view-form.png){width=75%}
+   ![Data view formu](../assets/screenshots/LAB-ELK-02/03-data-view-form.png){width=75%}
 
 ### 3. Discover ve KQL
 
@@ -103,7 +103,7 @@ Kendi SSH loglarınız için bir data view oluşturun. Logstash her gün yeni bi
 event.outcome : "failure"
 ```
 
-![Discover KQL](../assets/screenshots/LAB-ELK-05/04-discover-kql.png){width=75%}
+![Discover KQL](../assets/screenshots/LAB-ELK-02/04-discover-kql.png){width=75%}
 
 Başka sorgular deneyin:
 
@@ -117,14 +117,14 @@ Başka sorgular deneyin:
 
 1. **Analytics > Dashboards > Create dashboard**'a tıklayın, sonra **Create visualization**'a (8) tıklayın.
 
-   ![Create visualization](../assets/screenshots/LAB-ELK-05/05-create-visualization.png){width=75%}
+   ![Create visualization](../assets/screenshots/LAB-ELK-02/05-create-visualization.png){width=75%}
 
 2. Sol üstte data view olarak **Sistem Logları**'nı seçin (9).
 3. Arama çubuğuna (10) `event.outcome : "failure"` yazıp Enter'a basın.
 4. Sol listede `source.ip` arayın ve **source.ip.keyword** alanını (11) ortadaki boş alana sürükleyin. Lens, IP başına başarısız giriş sayısını çubuk grafik olarak çizer. Gruplama için `.keyword` hâli kullanılır: metin alanı kelimelere bölünerek saklanır, keyword hâli ise değeri bölmeden tutar ve sayılabilir.
 5. Sağ üstteki **Save and return**'e (12) tıklayın.
 
-   ![Lens](../assets/screenshots/LAB-ELK-05/06-lens-drag-field.png){width=75%}
+   ![Lens](../assets/screenshots/LAB-ELK-02/06-lens-drag-field.png){width=75%}
 
 Şimdi aynı panoya, betiğin kurduğu **Uygulama Trafiği ve Hatalar** panosundaki "En çok 5xx veren servisler" panelini elle ekleyin:
 
@@ -134,11 +134,11 @@ Başka sorgular deneyin:
 9. **service.name** alanını (16) ortaya sürükleyin. Lens servis başına 5xx sayısını çubuk grafik olarak çizer.
 10. **Save and return**'e (17) tıklayın.
 
-   ![İkinci panel](../assets/screenshots/LAB-ELK-05/07-lens-5xx-panel.png){width=75%}
+   ![İkinci panel](../assets/screenshots/LAB-ELK-02/07-lens-5xx-panel.png){width=75%}
 
 11. Panoda sağ üstteki **Save**'e tıklayın, başlığa (18) `SSH ve Hatalar` yazıp **Save**'e (19) tıklayın.
 
-   ![Panoyu kaydetme](../assets/screenshots/LAB-ELK-05/08-save-dashboard.png){width=75%}
+   ![Panoyu kaydetme](../assets/screenshots/LAB-ELK-02/08-save-dashboard.png){width=75%}
 
 Kendi kurduğunuz **SSH ve Hatalar** panosunu betiğin kurduğu **SSH ve Hatalar (betik)** panosuyla yan yana açın: iki panel de aynı sayıları gösterir. Betik, sizin arayüzde seçtiğiniz data view'ı, sorguyu ve alanı Kibana API'sine gönderir. Birinci paneldeki IP'ler ise sunucunuza internetten SSH ile girmeye çalışan gerçek adreslerdir.
 

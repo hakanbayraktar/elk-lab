@@ -12,8 +12,8 @@
 
 ## Ön Koşullar
 
-- LAB-ELK-01 stack'i, LAB-ELK-02 Filebeat'i ve LAB-ELK-03'ün Nginx'i ile grok filtresi çalışıyor olmalıdır.
-- Kurallar LAB-03'ün ürettiği alanları kullanır: `event.outcome`, `source.ip`, `url.original`.
+- LAB-ELK-01 stack'i, LAB-ELK-03 Filebeat'i ve LAB-ELK-04'ün Nginx'i ile grok filtresi çalışıyor olmalıdır.
+- Kurallar LAB-04'ün ürettiği alanları kullanır: `event.outcome`, `source.ip`, `url.original`.
 
 ## Mimari ve Çalışma Modeli
 
@@ -186,13 +186,13 @@ Kibana'da **Security > Alerts**'u açın. **Alerts by name** (14) iki kuralı ve
 
 ## Temizlik
 
-`elk-lab` etiketli iki kuralı silin; LAB-03'ün Nginx'ini ve grok filtresini kapatın:
+`elk-lab` etiketli iki kuralı silin; LAB-04'ün Nginx'ini ve grok filtresini kapatın:
 
 ```bash
 curl -s -u elastic:'DevOps2026!' -X POST "http://localhost:15601/api/detection_engine/rules/_bulk_action" \
   -H "kbn-xsrf: true" -H "Content-Type: application/json" \
   -d '{"action": "delete", "query": "alert.attributes.tags:\"elk-lab\""}' | jq -c '.attributes.summary'
-cd ~/elk-lab/03-logstash-grok && docker compose down
+cd ~/elk-lab/04-logstash-grok && docker compose down
 rm -f ~/elk-lab/01-elk-stack-setup/pipeline/50-grok.conf
 ```
 

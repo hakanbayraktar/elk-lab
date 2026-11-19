@@ -1,4 +1,4 @@
-# LAB-ELK-03 — Logstash Grok ile Log Ayrıştırma
+# LAB-ELK-04 — Logstash Grok ile Log Ayrıştırma
 
 | Profil / Araçlar | Açık Portlar |
 |---|---|
@@ -12,12 +12,12 @@
 
 ## Ön Koşullar
 
-- LAB-ELK-01 stack'i ve LAB-ELK-02 Filebeat'i çalışıyor olmalıdır.
+- LAB-ELK-01 stack'i ve LAB-ELK-03 Filebeat'i çalışıyor olmalıdır.
 - `8081` portu boş olmalıdır.
 
 ## Mimari ve Çalışma Modeli
 
-![Grok önce/sonra](../assets/diagrams/03-grok-before-after.png){width=60%}
+![Grok önce/sonra](../assets/diagrams/04-grok-before-after.png){width=60%}
 
 Grok, düz metin satırını bir desene göre parçalar ve her parçayı bir alana yazar. Alan olunca "404 dönen istekler", "en çok deneme yapan IP" gibi sorular sorulabilir.
 
@@ -44,11 +44,11 @@ Logstash, `pipeline/` klasöründeki `.conf` dosyalarını ad sırasıyla birle�
 ### 1. Demo Nginx'i başlatma
 
 ```bash
-cd ~/elk-lab/03-logstash-grok
+cd ~/elk-lab/04-logstash-grok
 docker compose up -d
 ```
 
-`demo-nginx` container'ı `co.elastic.logs/enabled: "true"` etiketini taşır; LAB-02'deki Filebeat logunu otomatik toplar. Nginx her isteği **erişim satırı** olarak stdout'a, hataları (ör. dosya bulunamadı) **hata satırı** olarak stderr'e yazar. Filebeat ikisini de gönderir; hangisinden geldiği `stream` alanında (`stdout` / `stderr`) durur.
+`demo-nginx` container'ı `co.elastic.logs/enabled: "true"` etiketini taşır; LAB-03'deki Filebeat logunu otomatik toplar. Nginx her isteği **erişim satırı** olarak stdout'a, hataları (ör. dosya bulunamadı) **hata satırı** olarak stderr'e yazar. Filebeat ikisini de gönderir; hangisinden geldiği `stream` alanında (`stdout` / `stderr`) durur.
 
 ### 2. Önce: grok olmadan
 
@@ -110,7 +110,7 @@ Grok Debugger klasik alan adlarını gösterir; Logstash 8 aynı deseni ECS adla
 | `bytes` | `http.response.body.bytes` | `153` |
 | `agent` | `user_agent.original` | `Mozilla/5.0` |
 
-![Grok Debugger](../assets/screenshots/LAB-ELK-03/01-grok-debugger.png){width=75%}
+![Grok Debugger](../assets/screenshots/LAB-ELK-04/01-grok-debugger.png){width=75%}
 
 Deseni bozup (ör. `%{COMBINEDAPACHELOG}` yerine `%{IP:ip} %{WORD:yanlis}`) tekrar **Simulate**'e basın; eşleşmeyen desende Kibana hata verir. Logstash'te aynı durum `_grokparsefailure` etiketi olur.
 
@@ -119,7 +119,7 @@ Deseni bozup (ör. `%{COMBINEDAPACHELOG}` yerine `%{IP:ip} %{WORD:yanlis}`) tekr
 Filtre dosyasını LAB-01'in pipeline klasörüne kopyalayın. LAB-01'deki `CONFIG_RELOAD_AUTOMATIC=true` ayarı sayesinde Logstash klasörü birkaç saniyede bir kontrol eder, yeni dosyayı görünce pipeline'ı durdurmadan yeniden kurar. Logdaki `Reloading pipeline` satırı yeniden yüklemenin başladığını, `Pipelines running` satırı yeni pipeline'ın çalıştığını gösterir. Dosyada hata olsaydı eski pipeline çalışmaya devam eder ve logda `ERROR` görünürdü:
 
 ```bash
-cp ~/elk-lab/03-logstash-grok/pipeline/50-grok.conf ~/elk-lab/01-elk-stack-setup/pipeline/
+cp ~/elk-lab/04-logstash-grok/pipeline/50-grok.conf ~/elk-lab/01-elk-stack-setup/pipeline/
 sleep 15
 docker logs elk-logstash 2>&1 | grep -E "Reloading pipeline|Pipelines running" | tail -2 | cut -c1-110
 ```
@@ -216,9 +216,9 @@ Grok yalnız eklendikten sonra gelen satırlara uygulanır; daha önce yazılmı
 Nginx ve grok filtresi LAB-06'da da kullanılır; açık bırakın. LAB-06 bittiğinde:
 
 ```bash
-cd ~/elk-lab/03-logstash-grok
+cd ~/elk-lab/04-logstash-grok
 docker compose down
 rm -f ~/elk-lab/01-elk-stack-setup/pipeline/50-grok.conf
 ```
 
-Sonraki lab: **[LAB-ELK-04 — Kubernetes Pod Logları](../04-kubernetes-logs/README.md)**
+Sonraki lab: **[LAB-ELK-05 — Kubernetes Pod Logları](../05-kubernetes-logs/README.md)**

@@ -209,7 +209,7 @@ def paste_into(page, locator, text):
 
 
 def lab03(page):
-    lab = "LAB-ELK-03"
+    lab = "LAB-ELK-04"
     page.goto(BASE + "/app/dev_tools#/grokdebugger", wait_until="domcontentloaded"); settle(page, 5)
     eds = page.locator(".monaco-editor")
     paste_into(page, eds.nth(0), '172.31.0.1 - - [19/Nov/2026:16:05:12 +0000] "GET /urunler HTTP/1.1" 404 153 "-" "Mozilla/5.0" "-"')
@@ -226,7 +226,7 @@ def lab03(page):
 
 
 def lab05(page):
-    lab = "LAB-ELK-05"
+    lab = "LAB-ELK-02"
     # Adim 1: hazir panolar listesi
     page.goto(BASE + "/app/dashboards#/list", wait_until="domcontentloaded"); settle(page, 5)
     shoot(page, lab, "01-dashboard-list", [

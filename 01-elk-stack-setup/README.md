@@ -319,4 +319,4 @@ cd ~/elk-lab/01-elk-stack-setup
 docker compose down -v
 ```
 
-Sonraki lab: **[LAB-ELK-02 — Filebeat ile Linux ve Docker Logları](../02-filebeat-host-docker/README.md)**
+Sonraki lab: **[LAB-ELK-03 — Filebeat ile Linux ve Docker Logları](../03-filebeat-host-docker/README.md)**

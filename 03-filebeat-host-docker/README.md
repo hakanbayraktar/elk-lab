@@ -1,4 +1,4 @@
-# LAB-ELK-02 — Filebeat ile Linux ve Docker Logları
+# LAB-ELK-03 — Filebeat ile Linux ve Docker Logları
 
 | Profil / Araçlar | Açık Portlar |
 |---|---|
@@ -16,7 +16,7 @@
 
 ## Mimari ve Çalışma Modeli
 
-![Filebeat akışı](../assets/diagrams/02-filebeat-flow.png){width=60%}
+![Filebeat akışı](../assets/diagrams/03-filebeat-flow.png){width=60%}
 
 Filebeat sunucuda tek bir container olarak çalışır ve iki kaynağı okur:
 
@@ -48,7 +48,7 @@ Etiket şartı, sunucudaki bütün container'ların (Jenkins, SonarQube…) logl
 Compose tek bir container (`elk-filebeat`) başlatır. Container, `filebeat.yml`'i ve sunucunun `/var/log`, Docker log klasörü ile `docker.sock` dosyasını salt okunur bağlar; böylece sunucudaki logları container'ın içinden okuyabilir.
 
 ```bash
-cd ~/elk-lab/02-filebeat-host-docker
+cd ~/elk-lab/03-filebeat-host-docker
 docker compose up -d
 ```
 
@@ -158,13 +158,13 @@ curl -s -u elastic:'DevOps2026!' "http://localhost:9200/docker-logs-*/_search?si
 
 ## Temizlik
 
-Filebeat LAB-03 ve LAB-06'da da kullanılır; açık bırakın. Lablar bitince:
+Filebeat LAB-04 ve LAB-06'da da kullanılır; açık bırakın. Lablar bitince:
 
 ```bash
-cd ~/elk-lab/02-filebeat-host-docker
+cd ~/elk-lab/03-filebeat-host-docker
 docker compose down -v
 ```
 
 `-v`, Filebeat'in okuma konumunu tutan `filebeat-data` volume'unu da siler. Elasticsearch'teki index'ler kalır.
 
-Sonraki lab: **[LAB-ELK-03 — Logstash Grok ile Log Ayrıştırma](../03-logstash-grok/README.md)**
+Sonraki lab: **[LAB-ELK-04 — Logstash Grok ile Log Ayrıştırma](../04-logstash-grok/README.md)**
