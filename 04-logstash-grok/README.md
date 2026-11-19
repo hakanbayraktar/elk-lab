@@ -213,17 +213,15 @@ Grok yalnız eklendikten sonra gelen satırlara uygulanır; daha önce yazılmı
 
 ### 7. Ayrışan alanlarla arama
 
-Alanlar ayrıldığı için artık değere göre arayabilir ve sayabilirsiniz.
-
 **Discover'da KQL:**
 
 1. **Analytics > Discover**'da data view olarak (5) **Sistem Logları**'nı seçin, zaman aralığını **Last 1 hour** yapın.
 2. Arama çubuğuna (6) `event.outcome : "failure"` yazıp Enter'a basın.
-3. Sol listede **source.ip** alanına (7) tıklayın: Kibana bu alanın en sık değerlerini ve yüzdesini gösterir. LAB-ELK-03'te aynı veriyle bu mümkün değildi.
+3. Sol listede **source.ip**'ye (7) tıklayın; en sık değerler ve yüzdeleri görünür. Grok öncesinde bu alan yoktu.
 
    ![Discover ayrışmış alanlar](../assets/screenshots/LAB-ELK-04/02-discover-fields.png){width=75%}
 
-**Dev Tools'ta ES|QL:** Başarısız girişleri IP'ye göre sayın. Sunucunuz internete açık olduğu için listede sizin denemenizin (`127.0.0.1`) yanında başka IP'ler de olabilir; sayılar her sunucuda farklıdır:
+**Dev Tools'ta ES|QL:** Başarısız girişleri IP'ye göre sayın. Sunucu internete açık olduğu için başka IP'ler de çıkabilir; sayılar sunucuya göre değişir:
 
 ```http
 POST _query?format=txt
@@ -232,7 +230,7 @@ POST _query?format=txt
 }
 ```
 
-Panoda daha fazla veri görünsün diye Nginx'e farklı adreslere istek atın. `/` (ana sayfa) `200`, diğerleri `404` döner:
+Panoda veri olsun diye Nginx'e birkaç istek atın (`/` 200, diğerleri 404 döner):
 
 ```bash
 for p in / /urunler /sepet / /iletisim /urunler /; do
@@ -240,7 +238,7 @@ for p in / /urunler /sepet / /iletisim /urunler /; do
 done
 ```
 
-Nginx isteklerini durum koduna göre sayın. `IS NOT NULL` koşulu, grok eklenmeden önce yazılmış (alanları olmayan) satırları dışarıda bırakır:
+Nginx isteklerini durum koduna göre sayın; `IS NOT NULL`, grok öncesi satırları dışarıda bırakır:
 
 ```http
 POST _query?format=txt
@@ -251,17 +249,15 @@ POST _query?format=txt
 
 ### 8. Lens ile pano
 
-İki panelli bir pano kurun: SSH deneyen IP'ler ve Nginx'te en çok istenen adresler.
-
 1. **Analytics > Dashboards > Create dashboard > Create visualization**'a tıklayın.
 2. Data view (8): **Sistem Logları**. Zaman aralığı (9): **Last 1 hour**. Arama çubuğu (10): `event.outcome : "failure"`.
-3. Sol listede `source.ip` arayıp **source.ip.keyword** alanını (11) ortaya sürükleyin. Lens IP başına sayıyı çubuk grafik olarak çizer. Gruplama için `.keyword` hâli kullanılır: metin alanı kelimelere bölünerek saklanır, keyword hâli değeri bölmeden tutar ve sayılabilir.
+3. **source.ip.keyword** alanını (11) ortaya sürükleyin; Lens IP başına sayıyı çizer. Gruplama `.keyword` hâliyle yapılır, çünkü metin alanı kelimelere bölünerek saklanır.
 4. **Save and return**'e (12) tıklayın.
 
    ![Lens SSH paneli](../assets/screenshots/LAB-ELK-04/03-lens-ssh.png){width=75%}
 
 5. Panoda tekrar **Create visualization**'a tıklayın. Data view (13): **Docker Logları**. Arama çubuğu (14): `container.name : "demo-nginx" and http.response.status_code >= 200`.
-6. **url.original.keyword** alanını (15) ortaya sürükleyin; Lens adres başına istek sayısını çizer. **Save and return**'e (16) tıklayın.
+6. **url.original.keyword**'ü (15) sürükleyin, **Save and return**'e (16) tıklayın.
 
    ![Lens Nginx paneli](../assets/screenshots/LAB-ELK-04/04-lens-nginx.png){width=75%}
 
@@ -269,7 +265,7 @@ POST _query?format=txt
 
    ![Panoyu kaydetme](../assets/screenshots/LAB-ELK-04/05-save-dashboard.png){width=75%}
 
-**Aynı panoyu betikle kurma.** `scripts/create_dashboard.py`, arayüzde seçtiğiniz data view'ları, sorguları ve alanları Kibana API'sine gönderip aynı panoyu `SSH ve Nginx (betik)` adıyla kurar. Panolar çoğaltılacaksa ya da Git'te saklanacaksa bu yol kullanılır:
+**Aynı panoyu betikle kurma.** `scripts/create_dashboard.py` aynı ayarları Kibana API'sine gönderip panoyu `SSH ve Nginx (betik)` adıyla kurar; panoları çoğaltmak ya da Git'te saklamak için bu yol kullanılır:
 
 ```bash
 cd ~/elk-lab/04-logstash-grok

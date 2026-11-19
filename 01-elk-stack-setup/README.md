@@ -123,7 +123,7 @@ Kullanıcı `elastic`, parola `DevOps2026!`. İlk girişte çıkan **Welcome to 
 
 ### 4. Dev Tools'u açma
 
-**Dev Tools**, Kibana'nın içindeki Elasticsearch konsoludur. Sol panele isteği yazarsınız, sağ panelde yanıtı görürsünüz. Terminalde `curl` ile yazacağınız her isteği burada daha kısa yazarsınız: adres, kullanıcı ve parola gerekmez; Kibana isteği giriş yaptığınız kullanıcıyla Elasticsearch'e iletir.
+**Dev Tools**, Kibana'daki Elasticsearch konsoludur: sol panele isteği yazarsınız, sağda yanıt görünür. `curl`'den farkı, adres ve parola yazmanız gerekmemesidir.
 
 1. Sol üstteki menü düğmesine tıklayın.
 2. Menünün altında **Management > Dev Tools**'a tıklayın. İlk açılışta çıkan tanıtım penceresini **Skip tour** ile kapatın.
@@ -132,13 +132,13 @@ Kullanıcı `elastic`, parola `DevOps2026!`. İlk girişte çıkan **Welcome to 
 
 3. Sol paneldeki örnek metni silin (**Clear this input**).
 
-Bir istek iki parçadan oluşur: ilk satırda **yöntem ve adres** (`POST devops-envanter/_doc/web-01`), altında gerekiyorsa **JSON gövde**. Bir isteği çalıştırmak için imleci isteğin ilk satırına getirip sağdaki ▶ (**Click to send request**) düğmesine basın ya da `Ctrl+Enter` (Mac'te `Cmd+Enter`) kullanın.
+Bir istek, ilk satırda yöntem ve adres, altında JSON gövdeden oluşur. Çalıştırmak için imleci isteğe getirip ▶ düğmesine basın ya da `Ctrl+Enter` kullanın.
 
 ### 5. Belge ekleme, arama ve güncelleme
 
-Elasticsearch'te veri **belge** (document) olarak saklanır: bir JSON nesnesi. Belgeler **index** içinde durur; index, ilişkisel veritabanındaki tabloya benzer. Aşağıdaki istekleri sırayla Dev Tools'a yapıştırıp tek tek çalıştırın.
+Elasticsearch'te veri **belge** (JSON nesnesi) olarak **index** içinde saklanır; index bir tabloya benzer. İstekleri sırayla yapıştırıp tek tek çalıştırın.
 
-**Zaman damgası için pipeline.** Log ve olay verisinde her belgenin bir zamanı olmalıdır; Kibana'da "son 15 dakika", "dün" gibi filtreler ve zaman grafikleri bu alana göre çalışır. Bu alanın adı geleneksel olarak `@timestamp`'tir. Belgeleri elle yazarken zamanı da elle yazmak yerine Elasticsearch'e yazdırın: **ingest pipeline**, belge kaydedilmeden önce üzerinde çalışan işlem adımlarıdır. Aşağıdaki pipeline her belgeye kaydedildiği anı `@timestamp` olarak ekler:
+**Zaman damgası.** Kibana'nın zaman filtreleri ("son 15 dakika") ve grafikleri belgedeki `@timestamp` alanına göre çalışır. Zamanı elle yazmak yerine bir **ingest pipeline** ile Elasticsearch'e yazdırın; pipeline, belge kaydedilmeden önce çalışan işlem adımlarıdır. Bu pipeline her belgeye kaydedildiği anı ekler:
 
 ```http
 PUT _ingest/pipeline/zaman-ekle
@@ -155,13 +155,12 @@ PUT _ingest/pipeline/zaman-ekle
 }
 ```
 
-**Belge ekleme.** İlk sunucu envanteri belgesi. Adresin parçaları:
+**Belge ekleme.** Adresin parçaları:
 
-- `devops-envanter`: index adı. Yoksa ilk belgeyle birlikte otomatik oluşur ve alanların türü (`sunucu` metin, `cpu` sayı) ilk değerlerden çıkarılır.
-- `_doc/web-01`: belgenin kimliği (`_id`). Kimlik vermezseniz Elasticsearch rastgele bir kimlik üretir.
-- `refresh=true`: belgeyi hemen aranabilir yapar. Elasticsearch yeni belgeleri normalde yaklaşık 1 saniye sonra aramaya açar; bu parametre olmadan hemen ardından yapılan arama belgeyi bulamayabilir.
-- `pipeline=zaman-ekle`: belgeyi kaydetmeden önce az önce oluşturduğunuz pipeline'dan geçirir; belgeye `@timestamp` eklenir.
-- `filter_path=_index,_id,result`: yanıttan yalnız bu üç alanı gösterir; bütün yanıtı görmek için bu parametreyi silin.
+- `devops-envanter/_doc/web-01`: index adı ve belge kimliği. Index yoksa ilk belgeyle oluşur; alan türleri (`cpu` sayı, `sunucu` metin) ilk değerlerden çıkarılır.
+- `refresh=true`: belgeyi hemen aranabilir yapar (normalde ~1 saniye sonra açılır).
+- `pipeline=zaman-ekle`: belgeye `@timestamp` ekler.
+- `filter_path=...`: yanıtı kısaltır; tam yanıt için silebilirsiniz.
 
 İsteği sol panele (3) yapıştırın ve ▶ düğmesine (4) basın; yanıt sağ panelde görünür:
 
@@ -185,7 +184,7 @@ POST devops-envanter/_doc/web-01?refresh=true&pipeline=zaman-ekle&filter_path=_i
 
 ![Dev Tools isteği](../assets/screenshots/LAB-ELK-01/02-devtools-run.png){width=75%}
 
-`result: created` belgenin yeni yazıldığını söyler. Aynı isteği tekrar çalıştırırsanız `updated` döner: aynı kimlikli belge üzerine yazılır.
+`created` belgenin yazıldığını söyler; aynı istek tekrar çalışırsa `updated` döner, belge üzerine yazılır.
 
 İkinci belgeyi ekleyin:
 
@@ -199,7 +198,7 @@ POST devops-envanter/_doc/db-01?refresh=true&pipeline=zaman-ekle&filter_path=_in
 }
 ```
 
-**Metin araması.** `_search` belgeleri arar. `match` sorgusu metin araması yapar: `rol` alanında `frontend` kelimesi geçen belgeleri bulur. `filter_path=hits.hits._source` yalnız belgelerin içeriğini döndürür:
+**Metin araması.** `match`, `rol` alanında `frontend` geçen belgeleri bulur:
 
 ```http
 GET devops-envanter/_search?filter_path=hits.hits._source
@@ -225,7 +224,7 @@ GET devops-envanter/_search?filter_path=hits.hits._source
 }
 ```
 
-**Sayı aralığı.** Sayı alanlarında `range` sorgusu kullanılır. `gt` (greater than) "büyüktür" demektir; `gte` (büyük eşit), `lt` (küçüktür), `lte` (küçük eşit) de vardır. CPU kullanımı 50'nin üstünde olanlar:
+**Sayı aralığı.** `range` sayı alanlarında çalışır; `gt` büyüktür, `gte`, `lt`, `lte` de vardır. CPU'su 50'nin üstünde olanlar:
 
 ```http
 GET devops-envanter/_search?filter_path=hits.hits._source
@@ -251,7 +250,7 @@ GET devops-envanter/_search?filter_path=hits.hits._source
 }
 ```
 
-**Güncelleme.** `_update` belgenin yalnız verilen alanlarını değiştirir; diğer alanlar korunur. `db-01`'in durumunu `aktif` yapın:
+**Güncelleme.** `_update` yalnız verilen alanı değiştirir, diğerleri korunur:
 
 ```http
 POST devops-envanter/_update/db-01?refresh=true&filter_path=result
@@ -266,7 +265,7 @@ POST devops-envanter/_update/db-01?refresh=true&filter_path=result
 }
 ```
 
-Belgeyi kimliğiyle okuyun; `durum` değişmiş, diğer alanlar aynı kalmıştır:
+Belgeyi kimliğiyle okuyun:
 
 ```http
 GET devops-envanter/_doc/db-01?filter_path=_source
@@ -283,7 +282,7 @@ GET devops-envanter/_doc/db-01?filter_path=_source
 }
 ```
 
-**Index'leri listeleme.** `_cat` API'leri sonucu JSON yerine okunaklı tablo olarak verir; `v` başlık satırını ekler. `docs.count` iki belgeyi gösterir. `health` sütunundaki `yellow`, bu index'in replica'sının tek node'da atanamamasındandır (bkz. Adım 2):
+**Index'leri listeleme.** `_cat` API'leri sonucu tablo olarak verir. `yellow`, replica'nın tek node'da atanamamasındandır (Adım 2):
 
 ```http
 GET _cat/indices/devops-*?v&h=health,index,docs.count
@@ -297,7 +296,7 @@ yellow devops-envanter          2
 <details>
 <summary><strong>Aynı işlemleri terminalden curl ile yapmak</strong></summary>
 
-Dev Tools'taki her isteğin `curl` karşılığı vardır. Farkı: tam adres (`http://localhost:9200/...`), kullanıcı ve parola (`-u`) ile JSON başlığı (`-H "Content-Type: application/json"`) elle verilir. Betiklerde ve otomasyonda bu yol kullanılır.
+Her Dev Tools isteğinin `curl` karşılığı vardır; adres, parola (`-u`) ve JSON başlığı elle verilir. Betiklerde bu yol kullanılır.
 
 ```text
 curl -s -u elastic:'DevOps2026!' -X POST "http://localhost:9200/devops-envanter/_doc/web-01?refresh=true" \
@@ -318,7 +317,7 @@ curl -s -u elastic:'DevOps2026!' -X DELETE "http://localhost:9200/devops-envante
 
 ### 6. Belgeleri Discover'da görme ve silme
 
-**Discover**, Kibana'da belgeleri tek tek görüp aradığınız ekrandır. Discover doğrudan index adıyla çalışmaz; önce bir **data view** gerekir. Data view iki şeyi söyler: hangi index'ler okunacak ve zaman alanı hangisi. Data view olmadan Elasticsearch'teki veriyi Discover'da göremezsiniz.
+**Discover** belgeleri görüp aradığınız ekrandır. Index'i doğrudan okumaz; önce hangi index'in ve hangi zaman alanının kullanılacağını söyleyen bir **data view** gerekir.
 
 1. Menüden **Management > Stack Management > Data Views**'a gidin ve **Create data view**'a tıklayın.
 2. **Name** (6): `DevOps Envanter`
@@ -328,11 +327,11 @@ curl -s -u elastic:'DevOps2026!' -X DELETE "http://localhost:9200/devops-envante
 
    ![Data view](../assets/screenshots/LAB-ELK-01/03-data-view.png){width=75%}
 
-6. Menüden **Analytics > Discover**'ı açın. Sol üstteki data view seçicisinden (10) **DevOps Envanter**'i seçin. Üstteki zaman çubuğu (11) her olayın zamanını gösterir; listede (12) iki belge vardır.
+6. **Analytics > Discover**'da data view olarak (10) **DevOps Envanter**'i seçin. Zaman grafiğinde (11) ve listede (12) iki belge görünür.
 
    ![Discover](../assets/screenshots/LAB-ELK-01/04-discover.png){width=75%}
 
-**Zaman alanı olmayan belge.** Şimdi pipeline'ı kullanmadan, yani `@timestamp` olmadan üçüncü bir belge ekleyin:
+**Zaman alanı olmayan belge.** Pipeline'sız, yani `@timestamp`'siz üçüncü bir belge ekleyin:
 
 ```http
 POST devops-envanter/_doc/cache-01?refresh=true&filter_path=_index,_id,result
@@ -356,7 +355,7 @@ GET devops-envanter/_count?filter_path=count
 }
 ```
 
-Discover'da sağ üstteki **Refresh**'e basın: liste yine **iki** belge gösterir. Discover her zaman seçili zaman aralığına göre süzer (varsayılan son 15 dakika); `@timestamp` alanı olmayan belge hiçbir zaman aralığına düşmediği için görünmez. Log toplarken her olaya doğru zamanın yazılması bu yüzden önemlidir: zamanı olmayan ya da yanlış zamanlı log Kibana'da kaybolmuş gibi görünür.
+Discover'da **Refresh**'e basın: yine **iki** belge görünür. Discover seçili zaman aralığına göre süzer; zamanı olmayan belge hiçbir aralığa düşmez. Zamanı olmayan ya da yanlış zamanlı log Kibana'da kaybolmuş gibi görünür.
 
 **Silme.** Index'i içindeki bütün belgelerle birlikte silin:
 
@@ -370,7 +369,7 @@ DELETE devops-envanter
 }
 ```
 
-Data view Kibana'da kalır; index silindiği için Discover boş görünür. Data view'ı **Stack Management > Data Views** sayfasından silebilirsiniz.
+Data view Kibana'da kalır, Discover boş görünür; **Stack Management > Data Views**'tan silebilirsiniz.
 
 ## Temizlik
 
