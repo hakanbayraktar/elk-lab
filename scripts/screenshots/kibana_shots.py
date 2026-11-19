@@ -191,7 +191,7 @@ def lab01(page):
             page.get_by_role("button", name=t).click(timeout=3000)
         except Exception:
             pass
-    console_text(page, 'GET devops-envanter/_search\n{\n  "query": { "match": { "durum": "aktif" } }\n}\n')
+    console_text(page, 'POST devops-envanter/_doc/web-01?refresh=true&filter_path=_index,_id,result\n{\n  "sunucu": "web-01",\n  "rol": "frontend",\n  "durum": "aktif",\n  "cpu": 24\n}\n')
     page.locator(".monaco-editor .view-line").first.click(); time.sleep(1)
     page.locator('[data-test-subj="sendRequestButton"]').first.click(); time.sleep(4)
     shoot(page, lab, "02-devtools-run", [
